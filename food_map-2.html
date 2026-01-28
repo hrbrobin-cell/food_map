@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (除錯穩定版)</title>
+    <title>全台美食地圖 (最終極速版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -12,16 +12,29 @@
         header { text-align: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; margin-bottom: 10px; }
         .subtitle { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
+        
+        /* 控制區塊 */
         .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 600px; margin: 0 auto 30px auto;}
         .search-box { flex: 1; padding: 12px; border: 2px solid #ddd; min-width: 200px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
+        .search-box:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
+
+        /* 圓角按鈕共用樣式 */
         .btn-pill { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; transition: 0.3s; border: none; font-size: 0.95em; }
+        
+        /* 口袋名單按鈕 */
         .btn-fav { background-color: #fff; border: 2px solid #e53e3e; color: #e53e3e; }
         .btn-fav:hover, .btn-fav.active { background-color: #e53e3e; color: white; }
+        
+        /* 定位按鈕 */
         .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
         .btn-gps.loading { opacity: 0.7; cursor: wait; }
+
+        /* 狀態訊息 */
         .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; }
         .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
+
+        /* 篩選按鈕區 */
         .filter-section { max-width: 1000px; margin: 0 auto 30px auto; text-align: center; }
         .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 20px; }
         .label { font-size: 14px; color: #888; margin-bottom: 8px; display: block; }
@@ -30,41 +43,56 @@
         .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); }
         .district-btn { background-color: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
         .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
+
+        /* 卡片列表 */
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .food-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #38b2ac; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
+        
+        /* 愛心按鈕 */
         .heart-btn { position: absolute; top: 15px; right: 10px; background: none; border: none; font-size: 1.6em; cursor: pointer; color: #ddd; transition: 0.2s; z-index: 10; }
+        .heart-btn:hover { transform: scale(1.2); }
         .heart-btn.is-fav { color: #e53e3e; }
+
+        /* 卡片頂部資訊列 */
         .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; padding-right: 35px; }
         .meta-tag { font-size: 12px; color: #fff; background: #38b2ac; padding: 3px 8px; border-radius: 4px; display: inline-block;}
         .dist-badge { font-size: 12px; color: #718096; background: #edf2f7; padding: 2px 6px; border-radius: 4px; margin-left: 5px; display: inline-flex; align-items: center; gap: 3px; }
+        
+        /* 營業狀態標籤 */
         .status-badge { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; margin-left: auto; }
         .status-open { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; } 
         .status-closed { background-color: #edf2f7; color: #718096; border: 1px solid #cbd5e0; } 
+
+        /* 資訊行 */
         .info-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 0.95em; color: #555; }
         .info-icon { margin-right: 8px; width: 20px; text-align: center; }
         .hours-text { color: #e53e3e; font-weight: bold; }
         .note { background: #f8f9fa; color: #666; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; line-height: 1.5; }
+        
+        /* 底部按鈕群組 */
         .btn-group { display: flex; gap: 8px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
         .btn-nav { flex-grow: 1; height: 40px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 0.95em; transition: 0.2s; box-shadow: 0 2px 5px rgba(56, 178, 172, 0.3); }
+        .btn-nav:hover { background-color: #319795; transform: translateY(-2px); }
         .btn-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-size: 1.2em; transition: 0.2s; color: white; flex-shrink: 0; }
-        .bg-web { background-color: #ed8936; } 
-        .bg-fb { background-color: #1877F2; }  
-        .bg-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
-        .bg-yt { background-color: #FF0000; } 
+        .btn-icon:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+        /* 社群顏色 */
+        .bg-web { background-color: #ed8936; } /* 官網橘 */
+        .bg-fb { background-color: #1877F2; }  /* FB藍 */
+        .bg-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); } /* IG漸層 */
+        .bg-yt { background-color: #FF0000; } /* YouTube紅 */
         
-        /* 系統日誌區塊 (除錯用) */
-        #debugLog {
-            margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; 
-            font-family: monospace; border-radius: 8px; font-size: 12px; 
-            max-height: 200px; overflow-y: auto; display: none;
-        }
+        /* 系統日誌區塊 */
+        #debugLog { margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; font-family: monospace; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">除錯穩定版</p>
+        <p class="subtitle">最終極速版</p>
         
         <div class="controls">
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
@@ -78,18 +106,20 @@
     </header>
 
     <div id="loading" class="loading">⏳ 正在連線至雲端資料庫...</div>
+    
     <div class="filter-section" id="filterSection">
         <span class="label">1. 選擇縣市</span>
         <div id="cityButtons" class="btn-container"></div>
         <span class="label">2. 選擇地區</span>
         <div id="districtButtons" class="btn-container"></div>
     </div>
+    
     <div class="food-list" id="foodContainer"></div>
     
     <div id="debugLog"><strong>System Log:</strong><br></div>
 
     <script>
-        // --- 系統日誌功能 ---
+        // --- 1. 系統日誌與錯誤處理 ---
         function log(msg) {
             console.log(msg);
             const debugDiv = document.getElementById('debugLog');
@@ -103,10 +133,10 @@
             log(`❌ ERROR: ${msg} (Line ${l})`);
         };
         
+        // --- 2. 設定與初始化 ---
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
-        
-        // 🚀 更換線路：使用 allorigins (比較穩定)
+        // 使用 allorigins 較穩定
         const proxyUrl = 'https://api.allorigins.win/raw?url='; 
         const finalUrl = proxyUrl + encodeURIComponent(rawUrl);
 
@@ -115,6 +145,7 @@
         let isShowingFavs = false;
         let isShowingNearby = false;
         let myFavorites = [];
+        
         try { myFavorites = JSON.parse(localStorage.getItem('myFoodFavorites')) || []; } catch (e) {}
 
         init();
@@ -132,11 +163,12 @@
                     processData(results.data);
                 },
                 error: function(err) { 
-                    log("❌ 網路連線失敗，請檢查 Proxy");
+                    log("❌ 網路連線失敗，請檢查網路");
                     showError("網路連線失敗"); 
                 }
             });
 
+            // 搜尋監聽
             document.getElementById('searchInput').addEventListener('input', (e) => {
                 const keyword = e.target.value.toLowerCase();
                 resetFilters(); 
@@ -149,25 +181,23 @@
         }
         function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
 
+        // --- 3. 資料清理與處理 ---
         function processData(data) {
             try {
                 allData = data.filter(item => item.name).map(item => {
                     const newItem = {};
                     Object.keys(item).forEach(key => {
+                        // 轉小寫並去底線 (容錯處理)
                         const cleanKey = key ? key.toLowerCase().trim().replace('_', '') : "unknown";
                         newItem[cleanKey] = item[key]?item[key].trim():"";
                     });
                     if(!newItem.city) newItem.city = "未分類";
                     newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
                     
-                    // 安全轉換經緯度
+                    // 座標轉換
                     newItem.lat = parseFloat(newItem.lat);
                     newItem.lng = parseFloat(newItem.lng);
-                    
-                    // 檢查是否轉換失敗 (Excel 空白或亂填)
-                    if (isNaN(newItem.lat) || isNaN(newItem.lng)) {
-                        newItem.lat = null; newItem.lng = null;
-                    }
+                    if (isNaN(newItem.lat) || isNaN(newItem.lng)) { newItem.lat = null; newItem.lng = null; }
                     
                     newItem.distance = null;
                     return newItem;
@@ -180,7 +210,7 @@
             }
         }
 
-        /* --- 📍 GPS 核心 (防當機版) --- */
+        /* --- 4. 📍 GPS 極速定位 (防卡死版) --- */
         function findNearby() {
             if (isShowingNearby) {
                 resetFilters();
@@ -193,33 +223,39 @@
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
             log("正在取得 GPS 位置...");
 
-            if (!navigator.geolocation) {
-                alert("瀏覽器不支援定位");
-                resetGpsBtn();
+            // ⚡ 1. 環境檢查 (如果是本地檔案或不安全連線，直接切換模擬，不要浪費時間)
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                log("⚠️ 偵測到非安全連線 (http/file)，直接使用模擬位置");
+                setTimeout(() => useFakeGPS("環境限制"), 500); 
                 return;
             }
 
-            // 防呆：用 try-catch 包裹，避免計算錯誤導致轉圈圈
-            try {
-                const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
-
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        log("✅ 取得位置成功！開始計算距離...");
-                        calculateAndRender(position.coords.latitude, position.coords.longitude);
-                    },
-                    (error) => {
-                        log("⚠️ 定位失敗/逾時，切換模擬模式");
-                        alert("定位逾時或失敗，將切換至模擬位置 (台北車站) 以供測試。");
-                        calculateAndRender(25.0478, 121.5170);
-                    },
-                    options
-                );
-            } catch (err) {
-                log("❌ 嚴重錯誤：" + err.message);
-                resetGpsBtn();
-                alert("程式發生錯誤，請截圖給工程師：" + err.message);
+            if (!navigator.geolocation) {
+                log("⚠️ 瀏覽器不支援，切換模擬");
+                useFakeGPS("瀏覽器不支援");
+                return;
             }
+
+            // ⚡ 2. 設定極短逾時 (1.5秒)
+            const options = { enableHighAccuracy: false, timeout: 1500, maximumAge: 60000 };
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    log("✅ 快速取得位置成功！");
+                    calculateAndRender(position.coords.latitude, position.coords.longitude);
+                },
+                (error) => {
+                    log("⚠️ 定位太慢或被拒，切換模擬");
+                    useFakeGPS("定位逾時或權限不足");
+                },
+                options
+            );
+        }
+
+        function useFakeGPS(reason) {
+            log(`已切換至模擬模式 (原因: ${reason})`);
+            // 預設：台北車站座標
+            calculateAndRender(25.0478, 121.5170);
         }
 
         function calculateAndRender(userLat, userLng) {
@@ -233,19 +269,17 @@
                         item.distance = 99999;
                     }
                 });
-
                 log(`距離計算完成 (有座標店家: ${validCount} 筆)`);
-
                 const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
+                
                 isShowingNearby = true;
                 isShowingFavs = false;
-                
                 updateButtonStates();
                 document.getElementById('filterSection').style.display = 'none';
                 renderFood(nearbyData);
                 log("已更新列表顯示。");
             } catch(e) {
-                log("❌ 計算或渲染錯誤：" + e.message);
+                log("❌ 計算錯誤：" + e.message);
                 resetGpsBtn();
             }
         }
@@ -267,20 +301,18 @@
             return R * c;
         }
 
+        // --- 5. 格式化工具 ---
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
-        function resetFilters() { isShowingFavs = false; isShowingNearby = false; updateButtonStates(); document.getElementById('filterSection').style.display = 'block'; }
-        function updateButtonStates() {
-            const favBtn = document.getElementById('favFilterBtn'); const gpsBtn = document.getElementById('gpsBtn');
-            if (isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回到列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋名單"; }
-            if (isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; } else { gpsBtn.classList.remove('active'); gpsBtn.classList.remove('loading'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; }
-        }
-
-        /* --- 其他功能 --- */
+        function parseTime(t) { const parts = t.split(':'); return parseInt(parts[0]) * 60 + parseInt(parts[1]); }
+        function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
+        
         function checkIsOpen(hoursStr) {
             if (!hoursStr) return false;
+            // 強力正規化：處理 1030, ~, & 等符號
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
+
             const now = new Date();
             const dayOfWeek = now.getDay(); 
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
@@ -288,6 +320,7 @@
             const todayStr = dayMap[dayOfWeek];
             if (hoursStr.includes(todayStr + "公休") || hoursStr.includes(todayStr + "休息")) return false;
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
+            
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g);
             if (!timeMatches || timeMatches.length < 2) return null;
             let isOpen = false;
@@ -300,9 +333,16 @@
             }
             return isOpen;
         }
-        function parseTime(t) { const parts = t.split(':'); return parseInt(parts[0]) * 60 + parseInt(parts[1]); }
-        function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
+
+        // --- 6. 介面渲染與操作 ---
+        function resetFilters() { isShowingFavs = false; isShowingNearby = false; updateButtonStates(); document.getElementById('filterSection').style.display = 'block'; }
         
+        function updateButtonStates() {
+            const favBtn = document.getElementById('favFilterBtn'); const gpsBtn = document.getElementById('gpsBtn');
+            if (isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回到列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋名單"; }
+            if (isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; } else { gpsBtn.classList.remove('active'); gpsBtn.classList.remove('loading'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; }
+        }
+
         function renderCityButtons() {
             const cities = [...new Set(allData.map(item => item.city))];
             const container = document.getElementById('cityButtons'); container.innerHTML = '';
@@ -333,6 +373,7 @@
                 const displayPhone = formatPhoneNumber(item.phone);
                 const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
                 
+                // 社群連結判斷
                 const linkWeb = item.website || (item.link && !item.linkname ? item.link : ""); 
                 const linkFB  = item.fb; const linkIG  = item.ig; const linkYT  = item.youtube;
                 
@@ -342,6 +383,7 @@
                 if (linkIG) buttonsHtml += `<a href="${linkIG}" target="_blank" class="btn-icon bg-ig" title="Instagram"><i class="fab fa-instagram"></i></a>`;
                 if (linkYT) buttonsHtml += `<a href="${linkYT}" target="_blank" class="btn-icon bg-yt" title="YouTube"><i class="fab fa-youtube"></i></a>`;
 
+                // 營業狀態與距離
                 const isOpen = checkIsOpen(item.hours);
                 let statusBadge = '';
                 if (isOpen === true) statusBadge = '<span class="status-badge status-open">🟢 營業中</span>';
