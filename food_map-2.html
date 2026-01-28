@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (GPS防呆版)</title>
+    <title>全台美食地圖 (強制模擬定位版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* --- CSS 樣式區 (維持不變) --- */
+        /* --- CSS 樣式區 --- */
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; margin-bottom: 10px; }
@@ -133,18 +133,16 @@
                 });
                 if(!newItem.city) newItem.city = "未分類";
                 newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
-                
                 newItem.lat = parseFloat(newItem.lat);
                 newItem.lng = parseFloat(newItem.lng);
                 newItem.distance = null;
-
                 return newItem;
             });
             document.getElementById('loading').style.display = 'none';
             renderCityButtons();
         }
 
-        /* --- 📍 GPS 核心功能 (修復版) --- */
+        /* --- 📍 GPS 核心功能 (自動切換模擬版) --- */
         function findNearby() {
             if (isShowingNearby) {
                 resetFilters();
@@ -156,67 +154,55 @@
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
 
-            // 1. 檢查瀏覽器是否支援
             if (!navigator.geolocation) {
-                alert("您的瀏覽器不支援定位功能");
-                resetGpsBtn();
+                alert("瀏覽器不支援定位，將使用模擬位置 (台北車站)");
+                useFakeGPS();
                 return;
             }
 
-            // 2. 設定逾時 (10秒)
-            const options = {
-                enableHighAccuracy: true,
-                timeout: 10000, // 10秒逾時
-                maximumAge: 0
-            };
+            // 設定 3 秒逾時，如果瀏覽器死掉，直接切換模擬
+            const options = { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 };
 
-            // 3. 開始定位
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    // 成功
-                    const userLat = position.coords.latitude;
-                    const userLng = position.coords.longitude;
-                    
-                    allData.forEach(item => {
-                        if (item.lat && item.lng) {
-                            item.distance = calculateDistance(userLat, userLng, item.lat, item.lng);
-                        } else {
-                            item.distance = 99999;
-                        }
-                    });
-
-                    const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
-                    isShowingNearby = true;
-                    isShowingFavs = false;
-                    
-                    updateButtonStates();
-                    document.getElementById('filterSection').style.display = 'none';
-                    renderFood(nearbyData);
+                    // 成功抓到真實位置
+                    calculateAndRender(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
-                    // 失敗或拒絕
-                    console.error(error);
-                    let errMsg = "定位失敗";
-                    
-                    if (window.location.protocol === 'file:') {
-                        errMsg = "❌ 定位功能被瀏覽器封鎖！\n\n原因：您正在直接開啟檔案 (file://)。\n瀏覽器規定定位功能必須在網站伺服器上 (https:// 或 localhost) 才能使用。\n\n請嘗試：\n1. 上傳到 GitHub Pages (推薦)\n2. 使用 VS Code 的 Live Server";
-                    } else if (error.code === error.PERMISSION_DENIED) {
-                        errMsg = "您拒絕了定位權限，無法尋找附近店家。";
-                    } else if (error.code === error.TIMEOUT) {
-                        errMsg = "定位逾時 (超過10秒)，請檢查您的 GPS 收訊或網路。";
-                    }
-
-                    alert(errMsg);
-                    resetGpsBtn();
+                    // 失敗 (封鎖或逾時)，切換模擬
+                    console.warn("定位失敗，切換至模擬模式");
+                    useFakeGPS();
                 },
                 options
             );
         }
 
-        function resetGpsBtn() {
+        // 使用模擬座標 (台北車站)
+        function useFakeGPS() {
+            alert("⚠️ 偵測到定位功能受阻 (可能是因為直接開啟檔案)\n\n已自動切換為「模擬定位模式」\n(預設位置：台北車站)\n\n若要使用真實定位，請將網頁上傳至 GitHub Pages。");
+            // 台北車站座標
+            calculateAndRender(25.0478, 121.5170);
+        }
+
+        // 統一計算並顯示
+        function calculateAndRender(userLat, userLng) {
             const gpsBtn = document.getElementById('gpsBtn');
-            gpsBtn.classList.remove('loading');
-            gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食';
+            
+            allData.forEach(item => {
+                if (item.lat && item.lng) {
+                    item.distance = calculateDistance(userLat, userLng, item.lat, item.lng);
+                } else {
+                    item.distance = 99999;
+                }
+            });
+
+            const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
+            isShowingNearby = true;
+            isShowingFavs = false;
+            
+            updateButtonStates();
+            document.getElementById('filterSection').style.display = 'none';
+            renderFood(nearbyData);
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -244,7 +230,6 @@
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
-
             const now = new Date();
             const dayOfWeek = now.getDay(); 
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
