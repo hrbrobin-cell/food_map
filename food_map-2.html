@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (最終極速版)</title>
+    <title>全台美食地圖 (終極穩定版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -92,7 +92,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">最終極速版</p>
+        <p class="subtitle">終極穩定版 (含備援線路)</p>
         
         <div class="controls">
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
@@ -133,12 +133,16 @@
             log(`❌ ERROR: ${msg} (Line ${l})`);
         };
         
-        // --- 2. 設定與初始化 ---
+        // --- 2. 設定區與多線路 ---
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
-        // 使用 allorigins 較穩定
-        const proxyUrl = 'https://api.allorigins.win/raw?url='; 
-        const finalUrl = proxyUrl + encodeURIComponent(rawUrl);
+
+        // 🚀 備援線路清單 (如果第一個掛掉，會自動試下一個)
+        const proxyList = [
+            'https://api.allorigins.win/raw?url=',     // 線路 1
+            'https://corsproxy.io/?',                  // 線路 2
+            'https://api.codetabs.com/v1/proxy?quest=' // 線路 3
+        ];
 
         let allData = [];
         let currentCity = "";
@@ -151,22 +155,9 @@
         init();
 
         function init() {
-            log("開始讀取資料...");
-            Papa.parse(finalUrl, {
-                download: true, header: true, skipEmptyLines: true,
-                complete: function(results) {
-                    if (!results.data || results.data.length === 0) {
-                        log("❌ 讀取失敗：Excel 沒有資料");
-                        return showError("Excel 無資料");
-                    }
-                    log(`✅ 讀取成功：共 ${results.data.length} 筆資料`);
-                    processData(results.data);
-                },
-                error: function(err) { 
-                    log("❌ 網路連線失敗，請檢查網路");
-                    showError("網路連線失敗"); 
-                }
-            });
+            log("🚀 系統啟動，準備連線...");
+            // 從第 0 條線路開始嘗試
+            tryFetchData(0);
 
             // 搜尋監聽
             document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -179,6 +170,41 @@
                 } else if(currentCity) filterByCity(currentCity);
             });
         }
+
+        // --- 智慧連線函式 ---
+        function tryFetchData(proxyIndex) {
+            if (proxyIndex >= proxyList.length) {
+                log("❌ 所有線路都失敗！請檢查 Google 試算表連結是否正確，或稍後再試。");
+                showError("無法連線至資料庫 (All Proxies Failed)");
+                return;
+            }
+
+            const proxyUrl = proxyList[proxyIndex];
+            const finalUrl = proxyUrl + encodeURIComponent(rawUrl);
+            
+            log(`📡 嘗試連線中 (線路 ${proxyIndex + 1}/${proxyList.length})...`);
+
+            Papa.parse(finalUrl, {
+                download: true, 
+                header: true, 
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (!results.data || results.data.length === 0) {
+                        log(`⚠️ 線路 ${proxyIndex + 1} 回傳空資料，嘗試下一條...`);
+                        tryFetchData(proxyIndex + 1);
+                        return;
+                    }
+                    log(`✅ 連線成功！(使用線路 ${proxyIndex + 1})`);
+                    log(`📦 成功讀取 ${results.data.length} 筆資料`);
+                    processData(results.data);
+                },
+                error: function(err) { 
+                    log(`⚠️ 線路 ${proxyIndex + 1} 連線失敗，自動切換下一條...`);
+                    tryFetchData(proxyIndex + 1); // 遞迴呼叫下一條
+                }
+            });
+        }
+
         function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
 
         // --- 3. 資料清理與處理 ---
@@ -204,7 +230,7 @@
                 });
                 document.getElementById('loading').style.display = 'none';
                 renderCityButtons();
-                log("資料處理完成，等待操作。");
+                log("資料處理完成，地圖已就緒。");
             } catch(e) {
                 log("❌ 資料處理錯誤：" + e.message);
             }
@@ -308,7 +334,6 @@
         
         function checkIsOpen(hoursStr) {
             if (!hoursStr) return false;
-            // 強力正規化：處理 1030, ~, & 等符號
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
@@ -373,7 +398,6 @@
                 const displayPhone = formatPhoneNumber(item.phone);
                 const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
                 
-                // 社群連結判斷
                 const linkWeb = item.website || (item.link && !item.linkname ? item.link : ""); 
                 const linkFB  = item.fb; const linkIG  = item.ig; const linkYT  = item.youtube;
                 
@@ -383,7 +407,6 @@
                 if (linkIG) buttonsHtml += `<a href="${linkIG}" target="_blank" class="btn-icon bg-ig" title="Instagram"><i class="fab fa-instagram"></i></a>`;
                 if (linkYT) buttonsHtml += `<a href="${linkYT}" target="_blank" class="btn-icon bg-yt" title="YouTube"><i class="fab fa-youtube"></i></a>`;
 
-                // 營業狀態與距離
                 const isOpen = checkIsOpen(item.hours);
                 let statusBadge = '';
                 if (isOpen === true) statusBadge = '<span class="status-badge status-open">🟢 營業中</span>';
