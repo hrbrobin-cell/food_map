@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (終極穩定版)</title>
+    <title>全台美食地圖 (寬限GPS版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -92,7 +92,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">終極穩定版 (含備援線路)</p>
+        <p class="subtitle">寬限GPS版 (自動備援線路)</p>
         
         <div class="controls">
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
@@ -137,7 +137,7 @@
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
 
-        // 🚀 備援線路清單 (如果第一個掛掉，會自動試下一個)
+        // 🚀 備援線路清單
         const proxyList = [
             'https://api.allorigins.win/raw?url=',     // 線路 1
             'https://corsproxy.io/?',                  // 線路 2
@@ -156,10 +156,8 @@
 
         function init() {
             log("🚀 系統啟動，準備連線...");
-            // 從第 0 條線路開始嘗試
             tryFetchData(0);
 
-            // 搜尋監聽
             document.getElementById('searchInput').addEventListener('input', (e) => {
                 const keyword = e.target.value.toLowerCase();
                 resetFilters(); 
@@ -174,7 +172,7 @@
         // --- 智慧連線函式 ---
         function tryFetchData(proxyIndex) {
             if (proxyIndex >= proxyList.length) {
-                log("❌ 所有線路都失敗！請檢查 Google 試算表連結是否正確，或稍後再試。");
+                log("❌ 所有線路都失敗！");
                 showError("無法連線至資料庫 (All Proxies Failed)");
                 return;
             }
@@ -200,7 +198,7 @@
                 },
                 error: function(err) { 
                     log(`⚠️ 線路 ${proxyIndex + 1} 連線失敗，自動切換下一條...`);
-                    tryFetchData(proxyIndex + 1); // 遞迴呼叫下一條
+                    tryFetchData(proxyIndex + 1);
                 }
             });
         }
@@ -213,14 +211,12 @@
                 allData = data.filter(item => item.name).map(item => {
                     const newItem = {};
                     Object.keys(item).forEach(key => {
-                        // 轉小寫並去底線 (容錯處理)
                         const cleanKey = key ? key.toLowerCase().trim().replace('_', '') : "unknown";
                         newItem[cleanKey] = item[key]?item[key].trim():"";
                     });
                     if(!newItem.city) newItem.city = "未分類";
                     newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
                     
-                    // 座標轉換
                     newItem.lat = parseFloat(newItem.lat);
                     newItem.lng = parseFloat(newItem.lng);
                     if (isNaN(newItem.lat) || isNaN(newItem.lng)) { newItem.lat = null; newItem.lng = null; }
@@ -236,7 +232,7 @@
             }
         }
 
-        /* --- 4. 📍 GPS 極速定位 (防卡死版) --- */
+        /* --- 4. 📍 GPS 定位 (放寬限制版) --- */
         function findNearby() {
             if (isShowingNearby) {
                 resetFilters();
@@ -247,12 +243,12 @@
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
-            log("正在取得 GPS 位置...");
+            log("正在取得 GPS 位置 (逾時設定: 10秒)...");
 
-            // ⚡ 1. 環境檢查 (如果是本地檔案或不安全連線，直接切換模擬，不要浪費時間)
+            // 1. 環境檢查：如果是 file:// 或 http://，瀏覽器會直接封鎖，不用等直接切模擬
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                 log("⚠️ 偵測到非安全連線 (http/file)，直接使用模擬位置");
-                setTimeout(() => useFakeGPS("環境限制"), 500); 
+                setTimeout(() => useFakeGPS("環境限制 - 請使用 HTTPS"), 500); 
                 return;
             }
 
@@ -262,17 +258,24 @@
                 return;
             }
 
-            // ⚡ 2. 設定極短逾時 (1.5秒)
-            const options = { enableHighAccuracy: false, timeout: 1500, maximumAge: 60000 };
+            // 2. 設定寬鬆逾時 (10秒)，讓設備有時間反應
+            const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    log("✅ 快速取得位置成功！");
+                    log("✅ 取得位置成功！");
                     calculateAndRender(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
-                    log("⚠️ 定位太慢或被拒，切換模擬");
-                    useFakeGPS("定位逾時或權限不足");
+                    // 根據錯誤代碼給出不同提示
+                    let reason = "未知錯誤";
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED: reason = "使用者拒絕權限"; break;
+                        case error.POSITION_UNAVAILABLE: reason = "位置無法取得"; break;
+                        case error.TIMEOUT: reason = "定位逾時 (超過10秒)"; break;
+                    }
+                    log(`⚠️ 定位失敗 (${reason})，切換模擬`);
+                    useFakeGPS(reason);
                 },
                 options
             );
@@ -282,6 +285,7 @@
             log(`已切換至模擬模式 (原因: ${reason})`);
             // 預設：台北車站座標
             calculateAndRender(25.0478, 121.5170);
+            alert(`定位失敗 (${reason})\n\n已切換為「模擬定位模式」\n(預設位置：台北車站)\n\n若要使用真實定位，請確認已允許瀏覽器存取位置，並使用 HTTPS 連線。`);
         }
 
         function calculateAndRender(userLat, userLng) {
@@ -435,23 +439,6 @@
                 `;
                 container.appendChild(card);
             });
-        }
-
-        function toggleFavFilter() {
-            isShowingFavs = !isShowingFavs; isShowingNearby = false; updateButtonStates();
-            const fs = document.getElementById('filterSection');
-            if(isShowingFavs) {
-                fs.style.display = 'none';
-                const favs = allData.filter(i => myFavorites.includes(i.id));
-                renderFood(favs);
-                if(favs.length===0) document.getElementById('foodContainer').innerHTML = '<div style="text-align:center;padding:50px;color:#888;">尚無最愛</div>';
-            } else { resetFilters(); if(currentCity) filterByCity(currentCity); }
-        }
-        function toggleHeart(id, btn) {
-            const idx = myFavorites.indexOf(id);
-            if(idx===-1) { myFavorites.push(id); btn.classList.add('is-fav'); }
-            else { myFavorites.splice(idx,1); btn.classList.remove('is-fav'); if(isShowingFavs) toggleFavFilter(); }
-            localStorage.setItem('myFoodFavorites', JSON.stringify(myFavorites));
         }
     </script>
 </body>
