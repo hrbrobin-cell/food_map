@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (寬限GPS版)</title>
+    <title>全台美食地圖 (距離篩選版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -13,13 +13,24 @@
         h1 { color: #2c3e50; margin-bottom: 10px; }
         .subtitle { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
         
-        /* 控制區塊 */
-        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 600px; margin: 0 auto 30px auto;}
-        .search-box { flex: 1; padding: 12px; border: 2px solid #ddd; min-width: 200px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
+        /* 控制區塊 (加入 wrap 讓手機版自動換行) */
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 800px; margin: 0 auto 30px auto;}
+        
+        .search-box { flex: 2; padding: 12px; border: 2px solid #ddd; min-width: 150px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
         .search-box:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
 
+        /* ✨ 新增：距離下拉選單 */
+        .dist-select {
+            flex: 1; min-width: 110px; padding: 0 15px; border: 2px solid #ddd; border-radius: 30px; 
+            font-size: 15px; outline: none; background: white; cursor: pointer; color: #555;
+            appearance: none; /* 隱藏預設箭頭 (可選) */
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23333%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat; background-position: right 15px top 50%; background-size: 10px auto;
+        }
+        .dist-select:focus { border-color: #38b2ac; }
+
         /* 圓角按鈕共用樣式 */
-        .btn-pill { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; transition: 0.3s; border: none; font-size: 0.95em; }
+        .btn-pill { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 5px; transition: 0.3s; border: none; font-size: 0.95em; white-space: nowrap; }
         
         /* 口袋名單按鈕 */
         .btn-fav { background-color: #fff; border: 2px solid #e53e3e; color: #e53e3e; }
@@ -28,7 +39,7 @@
         /* 定位按鈕 */
         .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
-        .btn-gps.loading { opacity: 0.7; cursor: wait; }
+        .btn-gps.loading { opacity: 0.7; cursor: wait; pointer-events: none; } /* loading 時禁止點擊 */
 
         /* 狀態訊息 */
         .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; }
@@ -92,15 +103,24 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">寬限GPS版 (自動備援線路)</p>
+        <p class="subtitle">距離篩選 & 穩定連線版</p>
         
         <div class="controls">
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
+            
+            <select id="rangeSelect" class="dist-select" onchange="onRangeChange()">
+                <option value="99999">距離: 全部</option>
+                <option value="1">1 公里內</option>
+                <option value="3">3 公里內</option>
+                <option value="5" selected>5 公里內</option>
+                <option value="10">10 公里內</option>
+            </select>
+
             <button id="gpsBtn" class="btn-pill btn-gps" onclick="findNearby()">
-                <i class="fas fa-location-arrow"></i> 附近美食
+                <i class="fas fa-location-arrow"></i> 附近
             </button>
             <button id="favFilterBtn" class="btn-pill btn-fav" onclick="toggleFavFilter()">
-                ❤️ 口袋名單
+                ❤️ 口袋
             </button>
         </div>
     </header>
@@ -133,15 +153,14 @@
             log(`❌ ERROR: ${msg} (Line ${l})`);
         };
         
-        // --- 2. 設定區與多線路 ---
+        // --- 2. 設定區 ---
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
 
-        // 🚀 備援線路清單
         const proxyList = [
-            'https://api.allorigins.win/raw?url=',     // 線路 1
-            'https://corsproxy.io/?',                  // 線路 2
-            'https://api.codetabs.com/v1/proxy?quest=' // 線路 3
+            'https://api.allorigins.win/raw?url=',     
+            'https://corsproxy.io/?',                  
+            'https://api.codetabs.com/v1/proxy?quest=' 
         ];
 
         let allData = [];
@@ -188,7 +207,7 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     if (!results.data || results.data.length === 0) {
-                        log(`⚠️ 線路 ${proxyIndex + 1} 回傳空資料，嘗試下一條...`);
+                        log(`⚠️ 線路 ${proxyIndex + 1} 空資料，切換...`);
                         tryFetchData(proxyIndex + 1);
                         return;
                     }
@@ -197,7 +216,7 @@
                     processData(results.data);
                 },
                 error: function(err) { 
-                    log(`⚠️ 線路 ${proxyIndex + 1} 連線失敗，自動切換下一條...`);
+                    log(`⚠️ 線路 ${proxyIndex + 1} 失敗，切換...`);
                     tryFetchData(proxyIndex + 1);
                 }
             });
@@ -205,7 +224,7 @@
 
         function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
 
-        // --- 3. 資料清理與處理 ---
+        // --- 3. 資料處理 ---
         function processData(data) {
             try {
                 allData = data.filter(item => item.name).map(item => {
@@ -232,7 +251,7 @@
             }
         }
 
-        /* --- 4. 📍 GPS 定位 (放寬限制版) --- */
+        /* --- 4. 📍 GPS 定位 & 篩選 --- */
         function findNearby() {
             if (isShowingNearby) {
                 resetFilters();
@@ -243,12 +262,11 @@
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
-            log("正在取得 GPS 位置 (逾時設定: 10秒)...");
+            log("正在取得 GPS 位置...");
 
-            // 1. 環境檢查：如果是 file:// 或 http://，瀏覽器會直接封鎖，不用等直接切模擬
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                log("⚠️ 偵測到非安全連線 (http/file)，直接使用模擬位置");
-                setTimeout(() => useFakeGPS("環境限制 - 請使用 HTTPS"), 500); 
+                log("⚠️ 非安全連線，直接使用模擬位置");
+                setTimeout(() => useFakeGPS("環境限制"), 500); 
                 return;
             }
 
@@ -258,7 +276,7 @@
                 return;
             }
 
-            // 2. 設定寬鬆逾時 (10秒)，讓設備有時間反應
+            // 10秒逾時
             const options = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
             navigator.geolocation.getCurrentPosition(
@@ -267,12 +285,11 @@
                     calculateAndRender(position.coords.latitude, position.coords.longitude);
                 },
                 (error) => {
-                    // 根據錯誤代碼給出不同提示
                     let reason = "未知錯誤";
                     switch(error.code) {
                         case error.PERMISSION_DENIED: reason = "使用者拒絕權限"; break;
                         case error.POSITION_UNAVAILABLE: reason = "位置無法取得"; break;
-                        case error.TIMEOUT: reason = "定位逾時 (超過10秒)"; break;
+                        case error.TIMEOUT: reason = "定位逾時"; break;
                     }
                     log(`⚠️ 定位失敗 (${reason})，切換模擬`);
                     useFakeGPS(reason);
@@ -283,11 +300,24 @@
 
         function useFakeGPS(reason) {
             log(`已切換至模擬模式 (原因: ${reason})`);
-            // 預設：台北車站座標
-            calculateAndRender(25.0478, 121.5170);
-            alert(`定位失敗 (${reason})\n\n已切換為「模擬定位模式」\n(預設位置：台北車站)\n\n若要使用真實定位，請確認已允許瀏覽器存取位置，並使用 HTTPS 連線。`);
+            calculateAndRender(25.0478, 121.5170); // 台北車站
+            // 提醒使用者 (只在第一次提醒，避免煩人，或在 Log 顯示就好)
+            // alert(`定位受阻 (${reason})，已使用模擬位置測試。`);
         }
 
+        // 當下拉選單改變時
+        function onRangeChange() {
+            if (isShowingNearby) {
+                // 如果已經在附近模式，重新過濾顯示
+                log("重新篩選距離...");
+                applyDistanceFilter(); 
+            } else {
+                // 如果還沒定位，自動觸發定位
+                findNearby();
+            }
+        }
+
+        // 計算距離並初次渲染
         function calculateAndRender(userLat, userLng) {
             try {
                 let validCount = 0;
@@ -299,25 +329,39 @@
                         item.distance = 99999;
                     }
                 });
-                log(`距離計算完成 (有座標店家: ${validCount} 筆)`);
-                const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
                 
+                log(`距離計算完成。開始套用篩選...`);
                 isShowingNearby = true;
                 isShowingFavs = false;
-                updateButtonStates();
-                document.getElementById('filterSection').style.display = 'none';
-                renderFood(nearbyData);
-                log("已更新列表顯示。");
+                
+                applyDistanceFilter(); // 呼叫篩選與渲染函式
+
             } catch(e) {
                 log("❌ 計算錯誤：" + e.message);
                 resetGpsBtn();
             }
         }
 
+        // 套用距離篩選並顯示
+        function applyDistanceFilter() {
+            const limit = parseFloat(document.getElementById('rangeSelect').value);
+            
+            // 過濾並排序
+            const nearbyData = allData
+                .filter(item => item.distance <= limit)
+                .sort((a, b) => a.distance - b.distance);
+
+            updateButtonStates();
+            document.getElementById('filterSection').style.display = 'none';
+            renderFood(nearbyData);
+            log(`顯示完成：範圍 ${limit}km 內，共 ${nearbyData.length} 間。`);
+        }
+
+        // 強制重置按鈕狀態 (解決轉圈圈問題)
         function resetGpsBtn() {
             const gpsBtn = document.getElementById('gpsBtn');
-            gpsBtn.classList.remove('loading');
-            gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食';
+            gpsBtn.classList.remove('loading'); // 🔥 暴力移除 loading
+            gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近';
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -368,8 +412,26 @@
         
         function updateButtonStates() {
             const favBtn = document.getElementById('favFilterBtn'); const gpsBtn = document.getElementById('gpsBtn');
-            if (isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回到列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋名單"; }
-            if (isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; } else { gpsBtn.classList.remove('active'); gpsBtn.classList.remove('loading'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; }
+            const distSelect = document.getElementById('rangeSelect');
+
+            if (isShowingFavs) { 
+                favBtn.classList.add('active'); favBtn.innerText = "🔙 列表"; 
+            } else { 
+                favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; 
+            }
+            
+            // 只要切換按鈕狀態，就強制移除 loading
+            gpsBtn.classList.remove('loading'); 
+
+            if (isShowingNearby) { 
+                gpsBtn.classList.add('active'); 
+                gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除'; 
+                distSelect.style.display = 'inline-block'; // 顯示下拉選單
+            } else { 
+                gpsBtn.classList.remove('active'); 
+                gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近'; 
+                // distSelect.style.display = 'none'; // 可選擇是否隱藏，這裡設為常駐方便操作
+            }
         }
 
         function renderCityButtons() {
@@ -395,7 +457,7 @@
 
         function renderFood(data) {
             const container = document.getElementById('foodContainer'); container.innerHTML = '';
-            if(data.length === 0) return container.innerHTML = '<p style="text-align:center;width:100%;color:#888;">無相關店家</p>';
+            if(data.length === 0) return container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:20px;">附近範圍內沒有相關店家<br>請嘗試切換「距離範圍」或移動位置</p>';
 
             data.forEach(item => {
                 const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
@@ -417,6 +479,7 @@
                 else if (isOpen === false) statusBadge = '<span class="status-badge status-closed">⚪ 休息中</span>';
 
                 let distHtml = '';
+                // 只有在附近模式且距離合理才顯示
                 if (isShowingNearby && item.distance && item.distance < 9000) {
                     distHtml = `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>`;
                 }
@@ -439,6 +502,23 @@
                 `;
                 container.appendChild(card);
             });
+        }
+
+        function toggleFavFilter() {
+            isShowingFavs = !isShowingFavs; isShowingNearby = false; updateButtonStates();
+            const fs = document.getElementById('filterSection');
+            if(isShowingFavs) {
+                fs.style.display = 'none';
+                const favs = allData.filter(i => myFavorites.includes(i.id));
+                renderFood(favs);
+                if(favs.length===0) document.getElementById('foodContainer').innerHTML = '<div style="text-align:center;padding:50px;color:#888;">尚無最愛</div>';
+            } else { resetFilters(); if(currentCity) filterByCity(currentCity); }
+        }
+        function toggleHeart(id, btn) {
+            const idx = myFavorites.indexOf(id);
+            if(idx===-1) { myFavorites.push(id); btn.classList.add('is-fav'); }
+            else { myFavorites.splice(idx,1); btn.classList.remove('is-fav'); if(isShowingFavs) toggleFavFilter(); }
+            localStorage.setItem('myFoodFavorites', JSON.stringify(myFavorites));
         }
     </script>
 </body>
