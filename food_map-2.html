@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (強制模擬定位版)</title>
+    <title>全台美食地圖 (除錯穩定版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -14,7 +14,6 @@
         .subtitle { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
         .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 600px; margin: 0 auto 30px auto;}
         .search-box { flex: 1; padding: 12px; border: 2px solid #ddd; min-width: 200px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
-        .search-box:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
         .btn-pill { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; transition: 0.3s; border: none; font-size: 0.95em; }
         .btn-fav { background-color: #fff; border: 2px solid #e53e3e; color: #e53e3e; }
         .btn-fav:hover, .btn-fav.active { background-color: #e53e3e; color: white; }
@@ -28,16 +27,14 @@
         .label { font-size: 14px; color: #888; margin-bottom: 8px; display: block; }
         .btn { border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 15px; transition: 0.2s; }
         .city-btn { background-color: #e2e8f0; color: #4a5568; }
-        .city-btn:hover, .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); }
+        .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); }
         .district-btn { background-color: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
-        .district-btn:hover, .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
+        .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .food-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #38b2ac; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
         .heart-btn { position: absolute; top: 15px; right: 10px; background: none; border: none; font-size: 1.6em; cursor: pointer; color: #ddd; transition: 0.2s; z-index: 10; }
-        .heart-btn:hover { transform: scale(1.2); }
         .heart-btn.is-fav { color: #e53e3e; }
         .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; padding-right: 35px; }
-        .food-card h3 { margin: 5px 0; color: #2c7a7b; font-size: 1.4em; padding-right: 0; }
         .meta-tag { font-size: 12px; color: #fff; background: #38b2ac; padding: 3px 8px; border-radius: 4px; display: inline-block;}
         .dist-badge { font-size: 12px; color: #718096; background: #edf2f7; padding: 2px 6px; border-radius: 4px; margin-left: 5px; display: inline-flex; align-items: center; gap: 3px; }
         .status-badge { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; margin-left: auto; }
@@ -49,21 +46,25 @@
         .note { background: #f8f9fa; color: #666; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; line-height: 1.5; }
         .btn-group { display: flex; gap: 8px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
         .btn-nav { flex-grow: 1; height: 40px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 0.95em; transition: 0.2s; box-shadow: 0 2px 5px rgba(56, 178, 172, 0.3); }
-        .btn-nav:hover { background-color: #319795; transform: translateY(-2px); }
         .btn-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-size: 1.2em; transition: 0.2s; color: white; flex-shrink: 0; }
-        .btn-icon:hover { transform: translateY(-2px); filter: brightness(1.1); }
         .bg-web { background-color: #ed8936; } 
         .bg-fb { background-color: #1877F2; }  
         .bg-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
         .bg-yt { background-color: #FF0000; } 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* 系統日誌區塊 (除錯用) */
+        #debugLog {
+            margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; 
+            font-family: monospace; border-radius: 8px; font-size: 12px; 
+            max-height: 200px; overflow-y: auto; display: none;
+        }
     </style>
 </head>
 <body>
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">即時顯示營業狀態 & 距離</p>
+        <p class="subtitle">除錯穩定版</p>
         
         <div class="controls">
             <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
@@ -84,13 +85,29 @@
         <div id="districtButtons" class="btn-container"></div>
     </div>
     <div class="food-list" id="foodContainer"></div>
+    
+    <div id="debugLog"><strong>System Log:</strong><br></div>
 
     <script>
-        window.onerror = function(msg, src, l, c, err) { document.getElementById('loading').innerHTML = `<div class="error-msg">❌ 錯誤：${msg}</div>`; };
+        // --- 系統日誌功能 ---
+        function log(msg) {
+            console.log(msg);
+            const debugDiv = document.getElementById('debugLog');
+            debugDiv.style.display = 'block';
+            debugDiv.innerHTML += `> ${msg}<br>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+
+        window.onerror = function(msg, src, l, c, err) { 
+            document.getElementById('loading').innerHTML = `<div class="error-msg">❌ 程式錯誤：${msg}</div>`; 
+            log(`❌ ERROR: ${msg} (Line ${l})`);
+        };
         
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
-        const proxyUrl = 'https://corsproxy.io/?'; 
+        
+        // 🚀 更換線路：使用 allorigins (比較穩定)
+        const proxyUrl = 'https://api.allorigins.win/raw?url='; 
         const finalUrl = proxyUrl + encodeURIComponent(rawUrl);
 
         let allData = [];
@@ -103,13 +120,21 @@
         init();
 
         function init() {
+            log("開始讀取資料...");
             Papa.parse(finalUrl, {
                 download: true, header: true, skipEmptyLines: true,
                 complete: function(results) {
-                    if (!results.data || results.data.length === 0) return showError("Excel 無資料");
+                    if (!results.data || results.data.length === 0) {
+                        log("❌ 讀取失敗：Excel 沒有資料");
+                        return showError("Excel 無資料");
+                    }
+                    log(`✅ 讀取成功：共 ${results.data.length} 筆資料`);
                     processData(results.data);
                 },
-                error: function() { showError("網路連線失敗"); }
+                error: function(err) { 
+                    log("❌ 網路連線失敗，請檢查 Proxy");
+                    showError("網路連線失敗"); 
+                }
             });
 
             document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -125,24 +150,37 @@
         function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
 
         function processData(data) {
-            allData = data.filter(item => item.name).map(item => {
-                const newItem = {};
-                Object.keys(item).forEach(key => {
-                    const cleanKey = key ? key.toLowerCase().trim().replace('_', '') : "unknown";
-                    newItem[cleanKey] = item[key]?item[key].trim():"";
+            try {
+                allData = data.filter(item => item.name).map(item => {
+                    const newItem = {};
+                    Object.keys(item).forEach(key => {
+                        const cleanKey = key ? key.toLowerCase().trim().replace('_', '') : "unknown";
+                        newItem[cleanKey] = item[key]?item[key].trim():"";
+                    });
+                    if(!newItem.city) newItem.city = "未分類";
+                    newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
+                    
+                    // 安全轉換經緯度
+                    newItem.lat = parseFloat(newItem.lat);
+                    newItem.lng = parseFloat(newItem.lng);
+                    
+                    // 檢查是否轉換失敗 (Excel 空白或亂填)
+                    if (isNaN(newItem.lat) || isNaN(newItem.lng)) {
+                        newItem.lat = null; newItem.lng = null;
+                    }
+                    
+                    newItem.distance = null;
+                    return newItem;
                 });
-                if(!newItem.city) newItem.city = "未分類";
-                newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
-                newItem.lat = parseFloat(newItem.lat);
-                newItem.lng = parseFloat(newItem.lng);
-                newItem.distance = null;
-                return newItem;
-            });
-            document.getElementById('loading').style.display = 'none';
-            renderCityButtons();
+                document.getElementById('loading').style.display = 'none';
+                renderCityButtons();
+                log("資料處理完成，等待操作。");
+            } catch(e) {
+                log("❌ 資料處理錯誤：" + e.message);
+            }
         }
 
-        /* --- 📍 GPS 核心功能 (自動切換模擬版) --- */
+        /* --- 📍 GPS 核心 (防當機版) --- */
         function findNearby() {
             if (isShowingNearby) {
                 resetFilters();
@@ -153,56 +191,69 @@
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
+            log("正在取得 GPS 位置...");
 
             if (!navigator.geolocation) {
-                alert("瀏覽器不支援定位，將使用模擬位置 (台北車站)");
-                useFakeGPS();
+                alert("瀏覽器不支援定位");
+                resetGpsBtn();
                 return;
             }
 
-            // 設定 3 秒逾時，如果瀏覽器死掉，直接切換模擬
-            const options = { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 };
+            // 防呆：用 try-catch 包裹，避免計算錯誤導致轉圈圈
+            try {
+                const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    // 成功抓到真實位置
-                    calculateAndRender(position.coords.latitude, position.coords.longitude);
-                },
-                (error) => {
-                    // 失敗 (封鎖或逾時)，切換模擬
-                    console.warn("定位失敗，切換至模擬模式");
-                    useFakeGPS();
-                },
-                options
-            );
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        log("✅ 取得位置成功！開始計算距離...");
+                        calculateAndRender(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                        log("⚠️ 定位失敗/逾時，切換模擬模式");
+                        alert("定位逾時或失敗，將切換至模擬位置 (台北車站) 以供測試。");
+                        calculateAndRender(25.0478, 121.5170);
+                    },
+                    options
+                );
+            } catch (err) {
+                log("❌ 嚴重錯誤：" + err.message);
+                resetGpsBtn();
+                alert("程式發生錯誤，請截圖給工程師：" + err.message);
+            }
         }
 
-        // 使用模擬座標 (台北車站)
-        function useFakeGPS() {
-            alert("⚠️ 偵測到定位功能受阻 (可能是因為直接開啟檔案)\n\n已自動切換為「模擬定位模式」\n(預設位置：台北車站)\n\n若要使用真實定位，請將網頁上傳至 GitHub Pages。");
-            // 台北車站座標
-            calculateAndRender(25.0478, 121.5170);
-        }
-
-        // 統一計算並顯示
         function calculateAndRender(userLat, userLng) {
-            const gpsBtn = document.getElementById('gpsBtn');
-            
-            allData.forEach(item => {
-                if (item.lat && item.lng) {
-                    item.distance = calculateDistance(userLat, userLng, item.lat, item.lng);
-                } else {
-                    item.distance = 99999;
-                }
-            });
+            try {
+                let validCount = 0;
+                allData.forEach(item => {
+                    if (item.lat && item.lng) {
+                        item.distance = calculateDistance(userLat, userLng, item.lat, item.lng);
+                        validCount++;
+                    } else {
+                        item.distance = 99999;
+                    }
+                });
 
-            const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
-            isShowingNearby = true;
-            isShowingFavs = false;
-            
-            updateButtonStates();
-            document.getElementById('filterSection').style.display = 'none';
-            renderFood(nearbyData);
+                log(`距離計算完成 (有座標店家: ${validCount} 筆)`);
+
+                const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
+                isShowingNearby = true;
+                isShowingFavs = false;
+                
+                updateButtonStates();
+                document.getElementById('filterSection').style.display = 'none';
+                renderFood(nearbyData);
+                log("已更新列表顯示。");
+            } catch(e) {
+                log("❌ 計算或渲染錯誤：" + e.message);
+                resetGpsBtn();
+            }
+        }
+
+        function resetGpsBtn() {
+            const gpsBtn = document.getElementById('gpsBtn');
+            gpsBtn.classList.remove('loading');
+            gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食';
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
