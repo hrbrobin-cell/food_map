@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全台美食地圖 (GPS防呆版)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        /* --- CSS 樣式區 (維持不變) --- */
+        body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
+        header { text-align: center; margin-bottom: 20px; }
+        h1 { color: #2c3e50; margin-bottom: 10px; }
+        .subtitle { color: #7f8c8d; font-size: 0.9em; margin-bottom: 20px; }
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; max-width: 600px; margin: 0 auto 30px auto;}
+        .search-box { flex: 1; padding: 12px; border: 2px solid #ddd; min-width: 200px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
+        .search-box:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
+        .btn-pill { padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px; transition: 0.3s; border: none; font-size: 0.95em; }
+        .btn-fav { background-color: #fff; border: 2px solid #e53e3e; color: #e53e3e; }
+        .btn-fav:hover, .btn-fav.active { background-color: #e53e3e; color: white; }
+        .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
+        .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
+        .btn-gps.loading { opacity: 0.7; cursor: wait; }
+        .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; }
+        .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
+        .filter-section { max-width: 1000px; margin: 0 auto 30px auto; text-align: center; }
+        .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 20px; }
+        .label { font-size: 14px; color: #888; margin-bottom: 8px; display: block; }
+        .btn { border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 15px; transition: 0.2s; }
+        .city-btn { background-color: #e2e8f0; color: #4a5568; }
+        .city-btn:hover, .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); }
+        .district-btn { background-color: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
+        .district-btn:hover, .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
+        .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .food-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #38b2ac; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
+        .heart-btn { position: absolute; top: 15px; right: 10px; background: none; border: none; font-size: 1.6em; cursor: pointer; color: #ddd; transition: 0.2s; z-index: 10; }
+        .heart-btn:hover { transform: scale(1.2); }
+        .heart-btn.is-fav { color: #e53e3e; }
+        .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; padding-right: 35px; }
+        .food-card h3 { margin: 5px 0; color: #2c7a7b; font-size: 1.4em; padding-right: 0; }
+        .meta-tag { font-size: 12px; color: #fff; background: #38b2ac; padding: 3px 8px; border-radius: 4px; display: inline-block;}
+        .dist-badge { font-size: 12px; color: #718096; background: #edf2f7; padding: 2px 6px; border-radius: 4px; margin-left: 5px; display: inline-flex; align-items: center; gap: 3px; }
+        .status-badge { font-size: 12px; padding: 2px 8px; border-radius: 12px; font-weight: bold; white-space: nowrap; margin-left: auto; }
+        .status-open { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; } 
+        .status-closed { background-color: #edf2f7; color: #718096; border: 1px solid #cbd5e0; } 
+        .info-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 0.95em; color: #555; }
+        .info-icon { margin-right: 8px; width: 20px; text-align: center; }
+        .hours-text { color: #e53e3e; font-weight: bold; }
+        .note { background: #f8f9fa; color: #666; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.9em; line-height: 1.5; }
+        .btn-group { display: flex; gap: 8px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
+        .btn-nav { flex-grow: 1; height: 40px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 0.95em; transition: 0.2s; box-shadow: 0 2px 5px rgba(56, 178, 172, 0.3); }
+        .btn-nav:hover { background-color: #319795; transform: translateY(-2px); }
+        .btn-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-size: 1.2em; transition: 0.2s; color: white; flex-shrink: 0; }
+        .btn-icon:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .bg-web { background-color: #ed8936; } 
+        .bg-fb { background-color: #1877F2; }  
+        .bg-ig { background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%); }
+        .bg-yt { background-color: #FF0000; } 
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🇹🇼 全台美食地圖</h1>
+        <p class="subtitle">即時顯示營業狀態 & 距離</p>
+        
+        <div class="controls">
+            <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名...">
+            <button id="gpsBtn" class="btn-pill btn-gps" onclick="findNearby()">
+                <i class="fas fa-location-arrow"></i> 附近美食
+            </button>
+            <button id="favFilterBtn" class="btn-pill btn-fav" onclick="toggleFavFilter()">
+                ❤️ 口袋名單
+            </button>
+        </div>
+    </header>
+
+    <div id="loading" class="loading">⏳ 正在連線至雲端資料庫...</div>
+    <div class="filter-section" id="filterSection">
+        <span class="label">1. 選擇縣市</span>
+        <div id="cityButtons" class="btn-container"></div>
+        <span class="label">2. 選擇地區</span>
+        <div id="districtButtons" class="btn-container"></div>
+    </div>
+    <div class="food-list" id="foodContainer"></div>
+
+    <script>
+        window.onerror = function(msg, src, l, c, err) { document.getElementById('loading').innerHTML = `<div class="error-msg">❌ 錯誤：${msg}</div>`; };
+        
+        const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
+        const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
+        const proxyUrl = 'https://corsproxy.io/?'; 
+        const finalUrl = proxyUrl + encodeURIComponent(rawUrl);
+
+        let allData = [];
+        let currentCity = "";
+        let isShowingFavs = false;
+        let isShowingNearby = false;
+        let myFavorites = [];
+        try { myFavorites = JSON.parse(localStorage.getItem('myFoodFavorites')) || []; } catch (e) {}
+
+        init();
+
+        function init() {
+            Papa.parse(finalUrl, {
+                download: true, header: true, skipEmptyLines: true,
+                complete: function(results) {
+                    if (!results.data || results.data.length === 0) return showError("Excel 無資料");
+                    processData(results.data);
+                },
+                error: function() { showError("網路連線失敗"); }
+            });
+
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                const keyword = e.target.value.toLowerCase();
+                resetFilters(); 
+                if(keyword) {
+                    document.getElementById('filterSection').style.display = 'block';
+                    renderFood(allData.filter(item => item.name.toLowerCase().includes(keyword)));
+                    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+                } else if(currentCity) filterByCity(currentCity);
+            });
+        }
+        function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
+
+        function processData(data) {
+            allData = data.filter(item => item.name).map(item => {
+                const newItem = {};
+                Object.keys(item).forEach(key => {
+                    const cleanKey = key ? key.toLowerCase().trim().replace('_', '') : "unknown";
+                    newItem[cleanKey] = item[key]?item[key].trim():"";
+                });
+                if(!newItem.city) newItem.city = "未分類";
+                newItem.id = `${newItem.city}-${newItem.name || Math.random()}`;
+                
+                newItem.lat = parseFloat(newItem.lat);
+                newItem.lng = parseFloat(newItem.lng);
+                newItem.distance = null;
+
+                return newItem;
+            });
+            document.getElementById('loading').style.display = 'none';
+            renderCityButtons();
+        }
+
+        /* --- 📍 GPS 核心功能 (修復版) --- */
+        function findNearby() {
+            if (isShowingNearby) {
+                resetFilters();
+                if(currentCity) filterByCity(currentCity); else renderCityButtons();
+                return;
+            }
+
+            const gpsBtn = document.getElementById('gpsBtn');
+            gpsBtn.classList.add('loading');
+            gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
+
+            // 1. 檢查瀏覽器是否支援
+            if (!navigator.geolocation) {
+                alert("您的瀏覽器不支援定位功能");
+                resetGpsBtn();
+                return;
+            }
+
+            // 2. 設定逾時 (10秒)
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 10000, // 10秒逾時
+                maximumAge: 0
+            };
+
+            // 3. 開始定位
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // 成功
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    allData.forEach(item => {
+                        if (item.lat && item.lng) {
+                            item.distance = calculateDistance(userLat, userLng, item.lat, item.lng);
+                        } else {
+                            item.distance = 99999;
+                        }
+                    });
+
+                    const nearbyData = [...allData].sort((a, b) => a.distance - b.distance);
+                    isShowingNearby = true;
+                    isShowingFavs = false;
+                    
+                    updateButtonStates();
+                    document.getElementById('filterSection').style.display = 'none';
+                    renderFood(nearbyData);
+                },
+                (error) => {
+                    // 失敗或拒絕
+                    console.error(error);
+                    let errMsg = "定位失敗";
+                    
+                    if (window.location.protocol === 'file:') {
+                        errMsg = "❌ 定位功能被瀏覽器封鎖！\n\n原因：您正在直接開啟檔案 (file://)。\n瀏覽器規定定位功能必須在網站伺服器上 (https:// 或 localhost) 才能使用。\n\n請嘗試：\n1. 上傳到 GitHub Pages (推薦)\n2. 使用 VS Code 的 Live Server";
+                    } else if (error.code === error.PERMISSION_DENIED) {
+                        errMsg = "您拒絕了定位權限，無法尋找附近店家。";
+                    } else if (error.code === error.TIMEOUT) {
+                        errMsg = "定位逾時 (超過10秒)，請檢查您的 GPS 收訊或網路。";
+                    }
+
+                    alert(errMsg);
+                    resetGpsBtn();
+                },
+                options
+            );
+        }
+
+        function resetGpsBtn() {
+            const gpsBtn = document.getElementById('gpsBtn');
+            gpsBtn.classList.remove('loading');
+            gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食';
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; 
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
+        function resetFilters() { isShowingFavs = false; isShowingNearby = false; updateButtonStates(); document.getElementById('filterSection').style.display = 'block'; }
+        function updateButtonStates() {
+            const favBtn = document.getElementById('favFilterBtn'); const gpsBtn = document.getElementById('gpsBtn');
+            if (isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回到列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋名單"; }
+            if (isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; } else { gpsBtn.classList.remove('active'); gpsBtn.classList.remove('loading'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; }
+        }
+
+        /* --- 其他功能 --- */
+        function checkIsOpen(hoursStr) {
+            if (!hoursStr) return false;
+            let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
+            cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
+            cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
+
+            const now = new Date();
+            const dayOfWeek = now.getDay(); 
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const dayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+            const todayStr = dayMap[dayOfWeek];
+            if (hoursStr.includes(todayStr + "公休") || hoursStr.includes(todayStr + "休息")) return false;
+            if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
+            const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g);
+            if (!timeMatches || timeMatches.length < 2) return null;
+            let isOpen = false;
+            for (let i = 0; i < timeMatches.length; i += 2) {
+                if (i + 1 >= timeMatches.length) break;
+                const start = parseTime(timeMatches[i]);
+                const end = parseTime(timeMatches[i+1]);
+                if (end < start) { if (currentMinutes >= start || currentMinutes <= end) isOpen = true; } 
+                else { if (currentMinutes >= start && currentMinutes <= end) isOpen = true; }
+            }
+            return isOpen;
+        }
+        function parseTime(t) { const parts = t.split(':'); return parseInt(parts[0]) * 60 + parseInt(parts[1]); }
+        function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
+        
+        function renderCityButtons() {
+            const cities = [...new Set(allData.map(item => item.city))];
+            const container = document.getElementById('cityButtons'); container.innerHTML = '';
+            cities.forEach(city => { const btn = document.createElement('button'); btn.className = 'btn city-btn'; btn.innerText = city; btn.onclick = () => filterByCity(city, btn); container.appendChild(btn); });
+            if(cities.length>0) filterByCity(cities[0], container.firstChild);
+        }
+        function filterByCity(city, btn) {
+            currentCity = city;
+            if(btn) { document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+            const cityData = allData.filter(i => i.city === city);
+            const districts = ["全部", ...new Set(cityData.map(i => i.district))];
+            const dc = document.getElementById('districtButtons'); dc.innerHTML = '';
+            districts.forEach(d => { const b = document.createElement('button'); b.className = 'btn district-btn'; b.innerText = d; b.onclick = (e) => filterByDistrict(city, d, e.target); dc.appendChild(b); });
+            filterByDistrict(city, "全部", dc.firstChild);
+        }
+        function filterByDistrict(city, district, btn) {
+            document.querySelectorAll('.district-btn').forEach(b => b.classList.remove('active')); if(btn) btn.classList.add('active');
+            let res = (district === "全部") ? allData.filter(i => i.city === city) : allData.filter(i => i.city === city && i.district === district);
+            renderFood(res);
+        }
+
+        function renderFood(data) {
+            const container = document.getElementById('foodContainer'); container.innerHTML = '';
+            if(data.length === 0) return container.innerHTML = '<p style="text-align:center;width:100%;color:#888;">無相關店家</p>';
+
+            data.forEach(item => {
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
+                const displayPhone = formatPhoneNumber(item.phone);
+                const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
+                
+                const linkWeb = item.website || (item.link && !item.linkname ? item.link : ""); 
+                const linkFB  = item.fb; const linkIG  = item.ig; const linkYT  = item.youtube;
+                
+                let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
+                if (linkWeb) buttonsHtml += `<a href="${linkWeb}" target="_blank" class="btn-icon bg-web" title="官方網站"><i class="fas fa-globe"></i></a>`;
+                if (linkFB) buttonsHtml += `<a href="${linkFB}" target="_blank" class="btn-icon bg-fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>`;
+                if (linkIG) buttonsHtml += `<a href="${linkIG}" target="_blank" class="btn-icon bg-ig" title="Instagram"><i class="fab fa-instagram"></i></a>`;
+                if (linkYT) buttonsHtml += `<a href="${linkYT}" target="_blank" class="btn-icon bg-yt" title="YouTube"><i class="fab fa-youtube"></i></a>`;
+
+                const isOpen = checkIsOpen(item.hours);
+                let statusBadge = '';
+                if (isOpen === true) statusBadge = '<span class="status-badge status-open">🟢 營業中</span>';
+                else if (isOpen === false) statusBadge = '<span class="status-badge status-closed">⚪ 休息中</span>';
+
+                let distHtml = '';
+                if (isShowingNearby && item.distance && item.distance < 9000) {
+                    distHtml = `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>`;
+                }
+
+                const isFav = myFavorites.includes(item.id);
+                const card = document.createElement('div');
+                card.className = 'food-card';
+                card.innerHTML = `
+                    <button class="${isFav?'heart-btn is-fav':'heart-btn'}" onclick="toggleHeart('${item.id}', this)">❤</button>
+                    <div class="card-top-row">
+                        <div class="meta-tag">${item.city} ${item.district} | ${item.type}</div>
+                        ${statusBadge}
+                    </div>
+                    <h3>${item.name} ${distHtml}</h3>
+                    <div class="info-row"><span class="info-icon">⏰</span><span class="hours-text">${item.hours}</span></div>
+                    <div class="info-row"><span class="info-icon">📞</span><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
+                    <div class="info-row"><span class="info-icon">🏠</span><span>${item.address}</span></div>
+                    <p class="note">${item.note}</p>
+                    <div class="btn-group">${buttonsHtml}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleFavFilter() {
+            isShowingFavs = !isShowingFavs; isShowingNearby = false; updateButtonStates();
+            const fs = document.getElementById('filterSection');
+            if(isShowingFavs) {
+                fs.style.display = 'none';
+                const favs = allData.filter(i => myFavorites.includes(i.id));
+                renderFood(favs);
+                if(favs.length===0) document.getElementById('foodContainer').innerHTML = '<div style="text-align:center;padding:50px;color:#888;">尚無最愛</div>';
+            } else { resetFilters(); if(currentCity) filterByCity(currentCity); }
+        }
+        function toggleHeart(id, btn) {
+            const idx = myFavorites.indexOf(id);
+            if(idx===-1) { myFavorites.push(id); btn.classList.add('is-fav'); }
+            else { myFavorites.splice(idx,1); btn.classList.remove('is-fav'); if(isShowingFavs) toggleFavFilter(); }
+            localStorage.setItem('myFoodFavorites', JSON.stringify(myFavorites));
+        }
+    </script>
+</body>
+</html>
