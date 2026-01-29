@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (極速效能版)</title>
+    <title>全台美食地圖 (專業聚合版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
     <style>
         /* --- CSS 樣式區 --- */
@@ -18,7 +24,6 @@
         h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.2em; letter-spacing: 1px; font-weight: 900; }
         .subtitle { color: #555; font-size: 1.1em; margin-bottom: 25px; }
         
-        /* 進度條 (加速感) */
         .loading-bar { width: 100%; background: #e2e8f0; height: 4px; position: fixed; top: 0; left: 0; z-index: 9999; display: none; }
         .loading-bar .bar { height: 100%; background: #38b2ac; animation: load 1.5s infinite ease-in-out; width: 50%; }
         @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
@@ -84,7 +89,6 @@
 
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
         
-        /* 地圖容器 */
         #mapContainer { display: none; width: 100%; height: 75vh; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #fff; z-index: 1; }
 
         .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
@@ -93,7 +97,6 @@
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .food-card:hover .card-image-box img { transform: scale(1.05); }
 
-        /* 卡片上的按鈕群組 (分享+愛心) */
         .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
         .action-btn { 
             width: 40px; height: 40px; border-radius: 50%; border: none; 
@@ -135,12 +138,21 @@
         .btn-icon:hover { transform: translateY(-2px); filter: brightness(0.95); }
         .bg-web { color: #ed8936; } .bg-fb { color: #1877F2; } .bg-ig { color: #d6249f; } .bg-yt { color: #FF0000; } 
         
-        /* Toast & Debug */
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
+        
+        /* ✨ 回到頂部按鈕 */
+        #backToTop {
+            position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; 
+            background: #2c3e50; color: white; border-radius: 50%; border: none; 
+            font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            z-index: 999; display: none; align-items: center; justify-content: center; 
+            transition: 0.3s; opacity: 0.9;
+        }
+        #backToTop:hover { transform: translateY(-3px); background: #38b2ac; }
+
         #debugLog { margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; font-family: monospace; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; }
         
-        /* Leaflet Popup */
         .leaflet-popup-content-wrapper { border-radius: 12px; overflow: hidden; padding: 0; }
         .leaflet-popup-content { margin: 0; width: 260px !important; }
         .map-popup-card { font-family: "Microsoft JhengHei"; }
@@ -158,7 +170,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v12.0 極速效能版 (地圖+分享+快取)</p>
+        <p class="subtitle">v13.0 專業聚合版 (地圖優化 + 效能)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -213,6 +225,8 @@
     
     <div id="debugLog"><strong>System Log:</strong><br></div>
     <div id="toast"></div>
+    
+    <button id="backToTop" onclick="scrollToTop()" title="回到頂部"><i class="fas fa-arrow-up"></i></button>
 
     <script>
         function log(msg) {
@@ -257,7 +271,16 @@
         function init() {
             log("🚀 系統啟動...");
             
-            // ⚡ 快取優先策略
+            // 捲動監聽
+            window.onscroll = function() {
+                const btn = document.getElementById('backToTop');
+                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                    btn.style.display = "flex";
+                } else {
+                    btn.style.display = "none";
+                }
+            };
+
             const cachedData = localStorage.getItem('foodMapData');
             const cachedTime = localStorage.getItem('foodMapData_ts');
             const now = Date.now();
@@ -265,7 +288,7 @@
             if (cachedData && cachedTime && (now - cachedTime < 3600000)) { 
                 log("⚡ 讀取快取 (秒開)");
                 processData(JSON.parse(cachedData), false); 
-                tryFetchData(0, true); // 背景更新
+                tryFetchData(0, true); 
             } else {
                 document.getElementById('loadingMsg').style.display = "block";
                 document.getElementById('loadingMsg').innerText = "⏳ 正在下載資料...";
@@ -273,7 +296,6 @@
                 tryFetchData(0, false);
             }
 
-            // 防抖搜尋
             let timeout = null;
             document.getElementById('searchInput').addEventListener('input', (e) => {
                 clearTimeout(timeout);
@@ -283,6 +305,8 @@
                 }, 300);
             });
         }
+
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
         function tryFetchData(proxyIndex, isBackground) {
             if (proxyIndex >= proxyList.length) {
@@ -344,12 +368,17 @@
             return match;
         }
 
-        /* --- 地圖邏輯 --- */
+        /* --- 地圖與聚合 --- */
         function initMap() {
             if (map) return;
             map = L.map('mapContainer').setView([23.9738, 120.9820], 8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
-            markersGroup = L.layerGroup().addTo(map);
+            
+            // 使用聚合插件
+            markersGroup = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true
+            }).addTo(map);
         }
 
         function renderMap(data) {
@@ -365,7 +394,7 @@
                 const statusText = isOpen === true ? '<span style="color:green">● 營業中</span>' : (isOpen === false ? '<span style="color:gray">● 休息中</span>' : '');
                 const popupContent = `<div class="map-popup-card"><div class="map-popup-header">${item.name} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div><div class="map-popup-body"><div class="map-popup-info">${statusText}</div><div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div><div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div><a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a></div></div>`;
                 marker.bindPopup(popupContent);
-                marker.addTo(markersGroup);
+                markersGroup.addLayer(marker); // 加到聚合層
                 bounds.push([item.lat, item.lng]);
             });
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
