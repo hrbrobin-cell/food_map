@@ -3,9 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (極速分享版)</title>
+    <title>全台美食地圖 (雙模旗艦版)</title>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <style>
         /* --- CSS 樣式區 --- */
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #222; }
@@ -46,12 +51,14 @@
         .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
         .btn-gps.loading { opacity: 0.7; cursor: wait; pointer-events: none; }
+        
+        /* ✨ 視圖切換按鈕 */
+        .btn-view { background-color: #2d3748; color: white; border: 2px solid #2d3748; }
+        .btn-view:hover { background-color: #4a5568; }
+        .btn-view i { font-size: 1.1em; }
 
-        .loading-bar { 
-            width: 100%; background: #e2e8f0; height: 4px; position: fixed; top: 0; left: 0; z-index: 9999; display: none; 
-        }
-        .loading-bar .bar { height: 100%; background: #38b2ac; animation: load 2s infinite ease-in-out; width: 50%; }
-        @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+        .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; font-size: 1.2em; }
+        .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
 
         .filter-section { max-width: 1000px; margin: 0 auto 20px auto; text-align: center; }
         .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
@@ -69,54 +76,43 @@
             transition: 0.2s; display: flex; align-items: center; gap: 6px; font-weight: bold;
         }
         .type-btn:hover { background-color: #f7fafc; transform: translateY(-2px); border-color: #cbd5e0; }
-        .type-btn.active { 
-            background-color: #4a5568; color: white; border-color: #4a5568; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: scale(1.05);
-        }
+        .type-btn.active { background-color: #4a5568; color: white; border-color: #4a5568; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: scale(1.05); }
         .type-btn i { font-size: 1.2em; }
 
+        /* 卡片列表容器 */
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
-        .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
         
+        /* ✨ 地圖容器 (預設隱藏) */
+        #mapContainer { 
+            display: none; width: 100%; height: 75vh; border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #fff; z-index: 1;
+        }
+
+        .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
         .card-image-box { width: 100%; height: 200px; position: relative; overflow: hidden; background-color: #f0f0f0; }
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .food-card:hover .card-image-box img { transform: scale(1.05); }
-
         .card-placeholder { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; text-align: center; }
         .card-placeholder i { font-size: 3.5em; margin-bottom: 10px; opacity: 0.95; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2)); }
         .card-placeholder span { font-size: 1.4em; font-weight: bold; letter-spacing: 2px; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-
         .card-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
-        
-        /* 按鈕群組：愛心與分享 */
-        .card-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 10; }
-        .action-btn { 
-            background: rgba(0,0,0,0.4); border-radius: 50%; width: 40px; height: 40px; 
-            border: none; font-size: 1.4em; cursor: pointer; color: rgba(255,255,255,0.95); 
-            transition: 0.2s; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);
-        }
-        .action-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.7); }
-        .btn-love.is-fav { color: #ff4757; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .btn-share:hover { color: #4299e1; background: white; }
-
+        .heart-btn { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.3); border-radius: 50%; width: 40px; height: 40px; border: none; font-size: 1.8em; cursor: pointer; color: rgba(255,255,255,0.9); transition: 0.2s; z-index: 10; display: flex; align-items: center; justify-content: center; padding-top: 4px;}
+        .heart-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.6); color: #ff4757; }
+        .heart-btn.is-fav { color: #ff4757; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
         .meta-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
         .meta-tag { font-size: 13px; color: #444; background: #edf2f7; padding: 4px 10px; border-radius: 6px; display: inline-block; cursor: pointer; transition: 0.2s; font-weight: 500; }
         .meta-tag:hover { background: #cbd5e0; color: #1a202c; }
-        
         .card-title { margin: 5px 0 15px 0; color: #1a202c; font-size: 1.6em; font-weight: 800; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; line-height: 1.3; }
         .rating-badge { font-size: 14px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; padding: 3px 10px; border-radius: 15px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
         .dist-badge { font-size: 14px; color: #2d3748; background: #e2e8f0; padding: 3px 10px; border-radius: 15px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; font-weight: bold; }
-        
         .status-badge { font-size: 14px; padding: 5px 12px; border-radius: 20px; font-weight: 800; white-space: nowrap; margin-left: auto; letter-spacing: 0.5px; }
         .status-open { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; } 
         .status-closed { background-color: #edf2f7; color: #718096; border: 1px solid #cbd5e0; } 
-
         .info-row { display: flex; align-items: flex-start; margin-bottom: 10px; font-size: 1.05em; color: #333; line-height: 1.5; }
         .info-icon { margin-right: 12px; width: 18px; text-align: center; color: #38b2ac; margin-top: 3px; font-size: 1.1em; }
         .hours-text { color: #e53e3e; font-weight: bold; }
         .note { background: #f8f9fa; color: #555; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 0.95em; line-height: 1.6; }
-        
         .btn-group { display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
         .btn-nav { flex-grow: 1; height: 44px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 1em; transition: 0.2s; box-shadow: 0 3px 6px rgba(56, 178, 172, 0.25); }
         .btn-nav:hover { background-color: #319795; transform: translateY(-2px); }
@@ -124,20 +120,25 @@
         .btn-icon:hover { transform: translateY(-2px); filter: brightness(0.95); }
         .bg-web { color: #ed8936; } .bg-fb { color: #1877F2; } .bg-ig { color: #d6249f; } .bg-yt { color: #FF0000; } 
         
-        /* Toast 訊息 */
-        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
-        #toast.show { visibility: visible; opacity: 1; }
-
+        /* Leaflet Popup 樣式優化 */
+        .leaflet-popup-content-wrapper { border-radius: 12px; overflow: hidden; padding: 0; }
+        .leaflet-popup-content { margin: 0; width: 260px !important; }
+        .map-popup-card { font-family: "Microsoft JhengHei"; }
+        .map-popup-header { background: #38b2ac; color: white; padding: 10px; font-weight: bold; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
+        .map-popup-body { padding: 15px; }
+        .map-popup-info { margin-bottom: 5px; font-size: 0.95em; color: #444; display: flex; align-items: center; gap: 5px; }
+        .map-popup-btn { display: block; text-align: center; background: #2d3748; color: white; padding: 8px; margin-top: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; }
+        
         #debugLog { margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; font-family: monospace; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
-    <div id="loadingBar" class="loading-bar"><div class="bar"></div></div>
-
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">極速分享版 (快取加速 + 一鍵分享)</p>
+        <p class="subtitle">旗艦版 (雙模切換 + 強力防呆)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -172,11 +173,14 @@
                 <button id="favFilterBtn" class="btn-pill btn-fav" onclick="toggleFavFilter()">
                     ❤️ 口袋名單
                 </button>
+                <button id="viewBtn" class="btn-pill btn-view" onclick="toggleViewMode()">
+                    <i class="fas fa-map-marked-alt"></i> 切換地圖
+                </button>
             </div>
         </div>
     </header>
 
-    <div id="loadingMsg" class="loading"></div>
+    <div id="loading" class="loading">⏳ 正在連線至雲端資料庫...</div>
     
     <div class="filter-section" id="filterSection">
         <span class="label">1. 美食類別 (可快速篩選)</span>
@@ -189,12 +193,12 @@
     </div>
     
     <div class="food-list" id="foodContainer"></div>
-    <div id="debugLog"><strong>System Log:</strong><br></div>
     
-    <div id="toast">訊息已複製</div>
+    <div id="mapContainer"></div>
+    
+    <div id="debugLog"><strong>System Log:</strong><br></div>
 
     <script>
-        // --- 核心邏輯區 ---
         function log(msg) {
             console.log(msg);
             const debugDiv = document.getElementById('debugLog');
@@ -204,7 +208,7 @@
         }
 
         window.onerror = function(msg, src, l, c, err) { 
-            // 忽略非關鍵錯誤，避免驚擾使用者
+            // 忽略非關鍵錯誤
             console.error(msg);
         };
         
@@ -213,10 +217,22 @@
         const proxyList = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest='];
 
         let appState = { 
-            allData: [], currentCity: "", currentDistrict: "全部", currentType: "全部", currentKeyword: "", 
-            isShowingFavs: false, isShowingNearby: false, isOpenOnly: false, myFavorites: [] 
+            allData: [], 
+            currentCity: "", 
+            currentDistrict: "全部", 
+            currentType: "全部", 
+            currentKeyword: "", 
+            isShowingFavs: false, 
+            isShowingNearby: false,
+            isOpenOnly: false,
+            myFavorites: [],
+            viewMode: 'list' // 'list' or 'map'
         };
         
+        // --- 地圖相關變數 ---
+        let map = null;
+        let markersGroup = null;
+
         const categoryMap = [
             { keywords: ['燒肉', '烤肉', '串燒', '居酒屋'], color: '#e53e3e', icon: 'fa-fire', text: '燒肉料理' },
             { keywords: ['火鍋', '鍋物', '涮涮鍋', '麻辣'], color: '#dd6b20', icon: 'fa-utensils', text: '精緻鍋物' },
@@ -236,62 +252,31 @@
 
         function init() {
             log("🚀 系統啟動...");
-            
-            // ⚡ 快取優先策略
-            const cachedData = localStorage.getItem('foodMapData');
-            const cachedTime = localStorage.getItem('foodMapData_ts');
-            const now = Date.now();
-
-            if (cachedData && cachedTime && (now - cachedTime < 3600000)) { // 1小時快取
-                log("⚡ 讀取快取資料 (秒開)");
-                processData(JSON.parse(cachedData), false); // false 表示不刷新 UI (如果已經有內容)
-                // 背景靜默更新
-                tryFetchData(0, true);
-            } else {
-                // 無快取，正常載入
-                document.getElementById('loadingMsg').innerText = "⏳ 正在連線至雲端資料庫...";
-                document.getElementById('loadingBar').style.display = 'block';
-                tryFetchData(0, false);
-            }
-
-            // ⚡ 防抖動搜尋 (Debounce)
-            let timeout = null;
+            tryFetchData(0);
             document.getElementById('searchInput').addEventListener('input', (e) => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => {
-                    appState.currentKeyword = e.target.value.toLowerCase();
-                    appState.isShowingFavs = false; updateUIState(); applyFiltersAndSort();
-                }, 300);
+                appState.currentKeyword = e.target.value.toLowerCase();
+                appState.isShowingFavs = false; updateUIState(); applyFiltersAndSort();
             });
         }
 
-        function tryFetchData(proxyIndex, isBackground) {
-            if (proxyIndex >= proxyList.length) {
-                if(!isBackground) document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">⚠️ 連線失敗，請檢查網路</div>`;
-                return;
-            }
+        function tryFetchData(proxyIndex) {
+            if (proxyIndex >= proxyList.length) return showError("無法連線至資料庫");
             const finalUrl = proxyList[proxyIndex] + encodeURIComponent(rawUrl);
-            if(!isBackground) log(`📡 連線中 (線路 ${proxyIndex + 1})...`);
-            
+            log(`📡 連線中 (線路 ${proxyIndex + 1})...`);
             Papa.parse(finalUrl, {
                 download: true, header: true, skipEmptyLines: true,
                 complete: function(results) {
-                    if (!results.data || results.data.length === 0) return tryFetchData(proxyIndex + 1, isBackground);
-                    log(`✅ 資料更新成功 (線路 ${proxyIndex + 1})`);
-                    
-                    // 寫入快取
-                    localStorage.setItem('foodMapData', JSON.stringify(results.data));
-                    localStorage.setItem('foodMapData_ts', Date.now());
-                    
-                    processData(results.data, true);
-                    document.getElementById('loadingBar').style.display = 'none';
-                    document.getElementById('loadingMsg').style.display = 'none';
+                    if (!results.data || results.data.length === 0) return tryFetchData(proxyIndex + 1);
+                    log(`✅ 連線成功 (線路 ${proxyIndex + 1})`);
+                    processData(results.data);
                 },
-                error: () => tryFetchData(proxyIndex + 1, isBackground)
+                error: () => tryFetchData(proxyIndex + 1)
             });
         }
 
-        function processData(data, refreshUI) {
+        function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
+
+        function processData(data) {
             try {
                 appState.allData = data.filter(item => item.name).map(item => {
                     const newItem = {};
@@ -311,15 +296,13 @@
                     newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
                     return newItem;
                 });
+                document.getElementById('loading').style.display = 'none';
                 
-                if(refreshUI) {
-                    renderTypeButtons(); 
-                    renderCityButtons();
-                    // 如果目前有定位，重新計算距離
-                    if(appState.isShowingNearby && navigator.geolocation) findNearby();
-                    else applyFiltersAndSort();
-                }
-            } catch(e) { log("❌ 資料處理錯誤：" + e.message); }
+                renderTypeButtons(); 
+                renderCityButtons();
+            } catch(e) {
+                log("❌ 資料處理錯誤：" + e.message);
+            }
         }
 
         function getCategoryStyle(typeStr) {
@@ -329,8 +312,90 @@
             return match;
         }
 
+        /* --- 🗺️ Leaflet 地圖整合 --- */
+        function initMap() {
+            if (map) return; // 避免重複初始化
+            log("🗺️ 初始化地圖...");
+            
+            // 預設中心點 (台灣中心)
+            map = L.map('mapContainer').setView([23.9738, 120.9820], 8);
+            
+            // 使用 OpenStreetMap 圖資
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            markersGroup = L.layerGroup().addTo(map);
+        }
+
+        function renderMap(data) {
+            if (!map) initMap();
+            markersGroup.clearLayers(); // 清除舊標記
+
+            const validData = data.filter(d => d.lat && d.lng);
+            if (validData.length === 0) return;
+
+            const bounds = [];
+            validData.forEach(item => {
+                const marker = L.marker([item.lat, item.lng]);
+                
+                // 建立 Popup 內容
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
+                const isOpen = checkIsOpen(item.hours);
+                const statusText = isOpen === true ? '<span style="color:green">● 營業中</span>' : (isOpen === false ? '<span style="color:gray">● 休息中</span>' : '');
+                
+                const popupContent = `
+                    <div class="map-popup-card">
+                        <div class="map-popup-header">${item.name} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div>
+                        <div class="map-popup-body">
+                            <div class="map-popup-info">${statusText}</div>
+                            <div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div>
+                            <div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div>
+                            <a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a>
+                        </div>
+                    </div>
+                `;
+                
+                marker.bindPopup(popupContent);
+                marker.addTo(markersGroup);
+                bounds.push([item.lat, item.lng]);
+            });
+
+            // 自動調整視野
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+
+        /* --- 🔄 視圖切換邏輯 --- */
+        function toggleViewMode() {
+            const btn = document.getElementById('viewBtn');
+            const listDiv = document.getElementById('foodContainer');
+            const mapDiv = document.getElementById('mapContainer');
+
+            if (appState.viewMode === 'list') {
+                appState.viewMode = 'map';
+                btn.innerHTML = '<i class="fas fa-list"></i> 切換列表';
+                listDiv.style.display = 'none';
+                mapDiv.style.display = 'block';
+                // 地圖初次顯示時需要 resize 否則會灰屏
+                setTimeout(() => { 
+                    if(!map) initMap(); 
+                    map.invalidateSize(); 
+                    applyFiltersAndSort(); // 重新渲染地圖標記
+                }, 100);
+            } else {
+                appState.viewMode = 'list';
+                btn.innerHTML = '<i class="fas fa-map-marked-alt"></i> 切換地圖';
+                listDiv.style.display = 'grid';
+                mapDiv.style.display = 'none';
+            }
+        }
+
         function findNearby() {
+            // 如果已經在附近模式，則取消
             if (appState.isShowingNearby) { resetToDefaultView(); return; }
+            
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
@@ -396,102 +461,12 @@
             const sortMode = document.getElementById('sortSelect').value;
             results.sort((a, b) => sortMode === 'rating' ? (b.rating || -1) - (a.rating || -1) : (a.distance || 99999) - (b.distance || 99999));
             
-            // ⚡ 使用 DocumentFragment 優化渲染效能
-            const fragment = document.createDocumentFragment();
-            const container = document.getElementById('foodContainer'); 
-            container.innerHTML = '';
-
-            if(results.length === 0) {
-                container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;font-size:1.2em;">沒有符合條件的店家<br>請嘗試關閉篩選條件</p>';
-                return;
-            }
-
-            results.forEach(item => {
-                fragment.appendChild(createCard(item));
-            });
-            container.appendChild(fragment);
-        }
-
-        // --- ✨ 建立卡片元件 (模組化) ---
-        function createCard(item) {
-            const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
-            const displayPhone = formatPhoneNumber(item.phone);
-            const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
-            
-            const isOpen = checkIsOpen(item.hours);
-            let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : '');
-            
-            let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : '';
-            let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : '';
-
-            const isFav = appState.myFavorites.includes(item.id);
-            const card = document.createElement('div');
-            card.className = 'food-card';
-            
-            let imageContent = '';
-            if (item.image) {
-                imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
+            // ✨ 根據模式決定渲染方式
+            if (appState.viewMode === 'list') {
+                renderFood(results);
             } else {
-                const cat = getCategoryStyle(item.type);
-                imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`;
+                renderMap(results);
             }
-
-            // 社群連結邏輯
-            let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
-            if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
-            if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`;
-            if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`;
-
-            card.innerHTML = `
-                <div class="card-image-box">
-                    ${imageContent}
-                    <div class="card-actions">
-                        <button class="action-btn btn-share" onclick="shareStore('${item.name}', '${item.address}', '${item.rating}', '${mapLink}')"><i class="fas fa-share-alt"></i></button>
-                        <button class="action-btn btn-love ${isFav?'is-fav':''}" onclick="toggleHeart('${item.id}', this)"><i class="fas fa-heart"></i></button>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="card-top-row">
-                        <div class="meta-group">
-                            <span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span>
-                            <span class="meta-tag" onclick="filterByType('${item.type}')">${item.type}</span>
-                        </div>
-                        ${statusBadge}
-                    </div>
-                    <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3>
-                    <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div>
-                    <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
-                    <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
-                    ${item.note ? `<p class="note">${item.note}</p>` : ''}
-                    <div class="btn-group">${buttonsHtml}</div>
-                </div>
-            `;
-            return card;
-        }
-
-        // --- 🔗 分享功能 ---
-        function shareStore(name, address, rating, url) {
-            const text = `【${name}】\n⭐ 評分：${rating || '暫無'}\n🏠 地址：${address}\n📍 地圖：${url}`;
-            
-            if (navigator.share) {
-                navigator.share({
-                    title: name,
-                    text: text,
-                    url: url
-                }).catch((error) => console.log('分享取消', error));
-            } else {
-                // 電腦版 Fallback：複製到剪貼簿
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("✅ 店家資訊已複製！");
-                });
-            }
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById("toast");
-            toast.innerText = msg;
-            toast.className = "show";
-            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
         function resetToDefaultView() {
@@ -509,6 +484,72 @@
             if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; }
             if (appState.isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; filterSection.style.display = 'none'; } 
             else { gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; filterSection.style.display = (appState.currentKeyword || appState.isShowingFavs) ? 'none' : 'block'; }
+        }
+
+        function renderFood(data) {
+            const container = document.getElementById('foodContainer'); container.innerHTML = '';
+            if(data.length === 0) return container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;font-size:1.2em;">沒有符合條件的店家<br>請嘗試關閉篩選條件</p>';
+
+            data.forEach(item => {
+                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
+                const displayPhone = formatPhoneNumber(item.phone);
+                const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
+                
+                const linkWeb = item.website || (item.link && !item.linkname ? item.link : ""); 
+                const linkFB  = item.fb; const linkIG  = item.ig; const linkYT  = item.youtube;
+                
+                let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
+                if (linkWeb) buttonsHtml += `<a href="${linkWeb}" target="_blank" class="btn-icon bg-web" title="官方網站"><i class="fas fa-globe"></i></a>`;
+                if (linkFB) buttonsHtml += `<a href="${linkFB}" target="_blank" class="btn-icon bg-fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>`;
+                if (linkIG) buttonsHtml += `<a href="${linkIG}" target="_blank" class="btn-icon bg-ig" title="Instagram"><i class="fab fa-instagram"></i></a>`;
+                if (linkYT) buttonsHtml += `<a href="${linkYT}" target="_blank" class="btn-icon bg-yt" title="YouTube"><i class="fab fa-youtube"></i></a>`;
+
+                const isOpen = checkIsOpen(item.hours);
+                let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : '');
+                
+                let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : '';
+                let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : '';
+
+                const isFav = appState.myFavorites.includes(item.id);
+                const card = document.createElement('div');
+                card.className = 'food-card';
+                
+                let imageContent = '';
+                if (item.image) {
+                    imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
+                } else {
+                    const cat = getCategoryStyle(item.type);
+                    imageContent = `
+                        <div class="card-placeholder" style="background:${cat.color}">
+                            <i class="fas ${cat.icon}"></i>
+                            <span>${cat.text}</span>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="card-image-box">
+                        ${imageContent}
+                        <button class="${isFav?'heart-btn is-fav':'heart-btn'}" onclick="toggleHeart('${item.id}', this)">❤</button>
+                    </div>
+                    <div class="card-content">
+                        <div class="card-top-row">
+                            <div class="meta-group">
+                                <span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span>
+                                <span class="meta-tag" onclick="filterByType('${item.type}')" title="點擊篩選此類別">${item.type}</span>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3>
+                        <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div>
+                        <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
+                        <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
+                        ${item.note ? `<p class="note">${item.note}</p>` : ''}
+                        <div class="btn-group">${buttonsHtml}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
         }
 
         function renderCityButtons() {
@@ -539,8 +580,10 @@
             const types = ["全部", ...new Set(appState.allData.map(i => i.type).filter(t => t))];
             const container = document.getElementById('typeButtons'); 
             container.innerHTML = '';
+            
             types.forEach(type => {
-                const btn = document.createElement('button'); btn.className = 'type-btn';
+                const btn = document.createElement('button'); 
+                btn.className = 'type-btn';
                 if (type !== "全部") {
                     const style = getCategoryStyle(type);
                     btn.innerHTML = `<i class="fas ${style.icon}" style="color:${style.color}"></i> ${type}`;
@@ -582,6 +625,7 @@
             } catch (e) { return 0; }
         }
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
+        
         function checkIsOpen(hoursStr) {
             if (!hoursStr || typeof hoursStr !== 'string') return false;
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
