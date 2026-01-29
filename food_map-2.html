@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v9.3 絕對防彈版)</title>
+    <title>全台美食地圖 (極速分享版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* --- CSS 樣式區 (維持旗艦版設計) --- */
+        /* --- CSS 樣式區 --- */
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #222; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.2em; letter-spacing: 1px; font-weight: 900; }
@@ -47,8 +47,11 @@
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
         .btn-gps.loading { opacity: 0.7; cursor: wait; pointer-events: none; }
 
-        .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; font-size: 1.2em; }
-        .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
+        .loading-bar { 
+            width: 100%; background: #e2e8f0; height: 4px; position: fixed; top: 0; left: 0; z-index: 9999; display: none; 
+        }
+        .loading-bar .bar { height: 100%; background: #38b2ac; animation: load 2s infinite ease-in-out; width: 50%; }
+        @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
 
         .filter-section { max-width: 1000px; margin: 0 auto 20px auto; text-align: center; }
         .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
@@ -84,9 +87,17 @@
         .card-placeholder span { font-size: 1.4em; font-weight: bold; letter-spacing: 2px; opacity: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.3); }
 
         .card-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
-        .heart-btn { position: absolute; top: 15px; right: 15px; background: rgba(0,0,0,0.3); border-radius: 50%; width: 40px; height: 40px; border: none; font-size: 1.8em; cursor: pointer; color: rgba(255,255,255,0.9); transition: 0.2s; z-index: 10; display: flex; align-items: center; justify-content: center; padding-top: 4px;}
-        .heart-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.6); color: #ff4757; }
-        .heart-btn.is-fav { color: #ff4757; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        
+        /* 按鈕群組：愛心與分享 */
+        .card-actions { position: absolute; top: 15px; right: 15px; display: flex; gap: 10px; z-index: 10; }
+        .action-btn { 
+            background: rgba(0,0,0,0.4); border-radius: 50%; width: 40px; height: 40px; 
+            border: none; font-size: 1.4em; cursor: pointer; color: rgba(255,255,255,0.95); 
+            transition: 0.2s; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+        }
+        .action-btn:hover { transform: scale(1.1); background: rgba(0,0,0,0.7); }
+        .btn-love.is-fav { color: #ff4757; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .btn-share:hover { color: #4299e1; background: white; }
 
         .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
         .meta-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -113,14 +124,20 @@
         .btn-icon:hover { transform: translateY(-2px); filter: brightness(0.95); }
         .bg-web { color: #ed8936; } .bg-fb { color: #1877F2; } .bg-ig { color: #d6249f; } .bg-yt { color: #FF0000; } 
         
+        /* Toast 訊息 */
+        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
+        #toast.show { visibility: visible; opacity: 1; }
+
         #debugLog { margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; font-family: monospace; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; }
     </style>
 </head>
 <body>
 
+    <div id="loadingBar" class="loading-bar"><div class="bar"></div></div>
+
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">旗艦版 (v9.3 強力防彈版)</p>
+        <p class="subtitle">極速分享版 (快取加速 + 一鍵分享)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -159,7 +176,7 @@
         </div>
     </header>
 
-    <div id="loading" class="loading">⏳ 正在連線至雲端資料庫...</div>
+    <div id="loadingMsg" class="loading"></div>
     
     <div class="filter-section" id="filterSection">
         <span class="label">1. 美食類別 (可快速篩選)</span>
@@ -173,8 +190,11 @@
     
     <div class="food-list" id="foodContainer"></div>
     <div id="debugLog"><strong>System Log:</strong><br></div>
+    
+    <div id="toast">訊息已複製</div>
 
     <script>
+        // --- 核心邏輯區 ---
         function log(msg) {
             console.log(msg);
             const debugDiv = document.getElementById('debugLog');
@@ -184,8 +204,8 @@
         }
 
         window.onerror = function(msg, src, l, c, err) { 
-            document.getElementById('loading').innerHTML = `<div class="error-msg">❌ 程式錯誤：${msg}</div>`; 
-            log(`❌ ERROR: ${msg} (Line ${l})`);
+            // 忽略非關鍵錯誤，避免驚擾使用者
+            console.error(msg);
         };
         
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
@@ -193,15 +213,8 @@
         const proxyList = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest='];
 
         let appState = { 
-            allData: [], 
-            currentCity: "", 
-            currentDistrict: "全部", 
-            currentType: "全部", 
-            currentKeyword: "", 
-            isShowingFavs: false, 
-            isShowingNearby: false,
-            isOpenOnly: false,
-            myFavorites: [] 
+            allData: [], currentCity: "", currentDistrict: "全部", currentType: "全部", currentKeyword: "", 
+            isShowingFavs: false, isShowingNearby: false, isOpenOnly: false, myFavorites: [] 
         };
         
         const categoryMap = [
@@ -223,31 +236,62 @@
 
         function init() {
             log("🚀 系統啟動...");
-            tryFetchData(0);
+            
+            // ⚡ 快取優先策略
+            const cachedData = localStorage.getItem('foodMapData');
+            const cachedTime = localStorage.getItem('foodMapData_ts');
+            const now = Date.now();
+
+            if (cachedData && cachedTime && (now - cachedTime < 3600000)) { // 1小時快取
+                log("⚡ 讀取快取資料 (秒開)");
+                processData(JSON.parse(cachedData), false); // false 表示不刷新 UI (如果已經有內容)
+                // 背景靜默更新
+                tryFetchData(0, true);
+            } else {
+                // 無快取，正常載入
+                document.getElementById('loadingMsg').innerText = "⏳ 正在連線至雲端資料庫...";
+                document.getElementById('loadingBar').style.display = 'block';
+                tryFetchData(0, false);
+            }
+
+            // ⚡ 防抖動搜尋 (Debounce)
+            let timeout = null;
             document.getElementById('searchInput').addEventListener('input', (e) => {
-                appState.currentKeyword = e.target.value.toLowerCase();
-                appState.isShowingFavs = false; updateUIState(); applyFiltersAndSort();
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    appState.currentKeyword = e.target.value.toLowerCase();
+                    appState.isShowingFavs = false; updateUIState(); applyFiltersAndSort();
+                }, 300);
             });
         }
 
-        function tryFetchData(proxyIndex) {
-            if (proxyIndex >= proxyList.length) return showError("無法連線至資料庫");
+        function tryFetchData(proxyIndex, isBackground) {
+            if (proxyIndex >= proxyList.length) {
+                if(!isBackground) document.getElementById('loadingMsg').innerHTML = `<div class="error-msg">⚠️ 連線失敗，請檢查網路</div>`;
+                return;
+            }
             const finalUrl = proxyList[proxyIndex] + encodeURIComponent(rawUrl);
-            log(`📡 連線中 (線路 ${proxyIndex + 1})...`);
+            if(!isBackground) log(`📡 連線中 (線路 ${proxyIndex + 1})...`);
+            
             Papa.parse(finalUrl, {
                 download: true, header: true, skipEmptyLines: true,
                 complete: function(results) {
-                    if (!results.data || results.data.length === 0) return tryFetchData(proxyIndex + 1);
-                    log(`✅ 連線成功 (線路 ${proxyIndex + 1})`);
-                    processData(results.data);
+                    if (!results.data || results.data.length === 0) return tryFetchData(proxyIndex + 1, isBackground);
+                    log(`✅ 資料更新成功 (線路 ${proxyIndex + 1})`);
+                    
+                    // 寫入快取
+                    localStorage.setItem('foodMapData', JSON.stringify(results.data));
+                    localStorage.setItem('foodMapData_ts', Date.now());
+                    
+                    processData(results.data, true);
+                    document.getElementById('loadingBar').style.display = 'none';
+                    document.getElementById('loadingMsg').style.display = 'none';
                 },
-                error: () => tryFetchData(proxyIndex + 1)
+                error: () => tryFetchData(proxyIndex + 1, isBackground)
             });
         }
 
-        function showError(msg) { document.getElementById('loading').innerHTML = `<div class="error-msg">⚠️ ${msg}</div>`; }
-
-        function processData(data) {
+        function processData(data, refreshUI) {
             try {
                 appState.allData = data.filter(item => item.name).map(item => {
                     const newItem = {};
@@ -264,19 +308,18 @@
                     newItem.image = newItem.image || ""; 
                     newItem.distance = null;
                     newItem.type = newItem.type ? newItem.type.trim() : "其他";
-                    
-                    // ✨ 關鍵防禦：確保 hours 是字串
                     newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
-                    
                     return newItem;
                 });
-                document.getElementById('loading').style.display = 'none';
                 
-                renderTypeButtons(); 
-                renderCityButtons();
-            } catch(e) {
-                log("❌ 資料處理錯誤：" + e.message);
-            }
+                if(refreshUI) {
+                    renderTypeButtons(); 
+                    renderCityButtons();
+                    // 如果目前有定位，重新計算距離
+                    if(appState.isShowingNearby && navigator.geolocation) findNearby();
+                    else applyFiltersAndSort();
+                }
+            } catch(e) { log("❌ 資料處理錯誤：" + e.message); }
         }
 
         function getCategoryStyle(typeStr) {
@@ -340,15 +383,9 @@
                 }
             }
             
-            // ✨ 營業中篩選 (安全防護)
             if (appState.isOpenOnly) {
                 results = results.filter(item => {
-                    try {
-                        return checkIsOpen(item.hours) === true;
-                    } catch (e) { 
-                        // 如果檢查過程發生任何錯誤，直接判定為「非營業中」(安全失敗)
-                        return false; 
-                    }
+                    try { return checkIsOpen(item.hours) === true; } catch (e) { return false; }
                 });
             }
 
@@ -358,7 +395,103 @@
             }
             const sortMode = document.getElementById('sortSelect').value;
             results.sort((a, b) => sortMode === 'rating' ? (b.rating || -1) - (a.rating || -1) : (a.distance || 99999) - (b.distance || 99999));
-            renderFood(results);
+            
+            // ⚡ 使用 DocumentFragment 優化渲染效能
+            const fragment = document.createDocumentFragment();
+            const container = document.getElementById('foodContainer'); 
+            container.innerHTML = '';
+
+            if(results.length === 0) {
+                container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;font-size:1.2em;">沒有符合條件的店家<br>請嘗試關閉篩選條件</p>';
+                return;
+            }
+
+            results.forEach(item => {
+                fragment.appendChild(createCard(item));
+            });
+            container.appendChild(fragment);
+        }
+
+        // --- ✨ 建立卡片元件 (模組化) ---
+        function createCard(item) {
+            const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
+            const displayPhone = formatPhoneNumber(item.phone);
+            const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
+            
+            const isOpen = checkIsOpen(item.hours);
+            let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : '');
+            
+            let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : '';
+            let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : '';
+
+            const isFav = appState.myFavorites.includes(item.id);
+            const card = document.createElement('div');
+            card.className = 'food-card';
+            
+            let imageContent = '';
+            if (item.image) {
+                imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
+            } else {
+                const cat = getCategoryStyle(item.type);
+                imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`;
+            }
+
+            // 社群連結邏輯
+            let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
+            if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
+            if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`;
+            if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`;
+
+            card.innerHTML = `
+                <div class="card-image-box">
+                    ${imageContent}
+                    <div class="card-actions">
+                        <button class="action-btn btn-share" onclick="shareStore('${item.name}', '${item.address}', '${item.rating}', '${mapLink}')"><i class="fas fa-share-alt"></i></button>
+                        <button class="action-btn btn-love ${isFav?'is-fav':''}" onclick="toggleHeart('${item.id}', this)"><i class="fas fa-heart"></i></button>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="card-top-row">
+                        <div class="meta-group">
+                            <span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span>
+                            <span class="meta-tag" onclick="filterByType('${item.type}')">${item.type}</span>
+                        </div>
+                        ${statusBadge}
+                    </div>
+                    <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3>
+                    <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div>
+                    <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
+                    <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
+                    ${item.note ? `<p class="note">${item.note}</p>` : ''}
+                    <div class="btn-group">${buttonsHtml}</div>
+                </div>
+            `;
+            return card;
+        }
+
+        // --- 🔗 分享功能 ---
+        function shareStore(name, address, rating, url) {
+            const text = `【${name}】\n⭐ 評分：${rating || '暫無'}\n🏠 地址：${address}\n📍 地圖：${url}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: name,
+                    text: text,
+                    url: url
+                }).catch((error) => console.log('分享取消', error));
+            } else {
+                // 電腦版 Fallback：複製到剪貼簿
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast("✅ 店家資訊已複製！");
+                });
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            toast.innerText = msg;
+            toast.className = "show";
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
         function resetToDefaultView() {
@@ -376,72 +509,6 @@
             if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; }
             if (appState.isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; filterSection.style.display = 'none'; } 
             else { gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; filterSection.style.display = (appState.currentKeyword || appState.isShowingFavs) ? 'none' : 'block'; }
-        }
-
-        function renderFood(data) {
-            const container = document.getElementById('foodContainer'); container.innerHTML = '';
-            if(data.length === 0) return container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;font-size:1.2em;">沒有符合條件的店家<br>請嘗試關閉篩選條件</p>';
-
-            data.forEach(item => {
-                const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
-                const displayPhone = formatPhoneNumber(item.phone);
-                const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
-                
-                const linkWeb = item.website || (item.link && !item.linkname ? item.link : ""); 
-                const linkFB  = item.fb; const linkIG  = item.ig; const linkYT  = item.youtube;
-                
-                let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
-                if (linkWeb) buttonsHtml += `<a href="${linkWeb}" target="_blank" class="btn-icon bg-web" title="官方網站"><i class="fas fa-globe"></i></a>`;
-                if (linkFB) buttonsHtml += `<a href="${linkFB}" target="_blank" class="btn-icon bg-fb" title="Facebook"><i class="fab fa-facebook-f"></i></a>`;
-                if (linkIG) buttonsHtml += `<a href="${linkIG}" target="_blank" class="btn-icon bg-ig" title="Instagram"><i class="fab fa-instagram"></i></a>`;
-                if (linkYT) buttonsHtml += `<a href="${linkYT}" target="_blank" class="btn-icon bg-yt" title="YouTube"><i class="fab fa-youtube"></i></a>`;
-
-                const isOpen = checkIsOpen(item.hours);
-                let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : '');
-                
-                let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : '';
-                let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : '';
-
-                const isFav = appState.myFavorites.includes(item.id);
-                const card = document.createElement('div');
-                card.className = 'food-card';
-                
-                let imageContent = '';
-                if (item.image) {
-                    imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
-                } else {
-                    const cat = getCategoryStyle(item.type);
-                    imageContent = `
-                        <div class="card-placeholder" style="background:${cat.color}">
-                            <i class="fas ${cat.icon}"></i>
-                            <span>${cat.text}</span>
-                        </div>
-                    `;
-                }
-
-                card.innerHTML = `
-                    <div class="card-image-box">
-                        ${imageContent}
-                        <button class="${isFav?'heart-btn is-fav':'heart-btn'}" onclick="toggleHeart('${item.id}', this)">❤</button>
-                    </div>
-                    <div class="card-content">
-                        <div class="card-top-row">
-                            <div class="meta-group">
-                                <span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span>
-                                <span class="meta-tag" onclick="filterByType('${item.type}')" title="點擊篩選此類別">${item.type}</span>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3>
-                        <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div>
-                        <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
-                        <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
-                        ${item.note ? `<p class="note">${item.note}</p>` : ''}
-                        <div class="btn-group">${buttonsHtml}</div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
         }
 
         function renderCityButtons() {
@@ -472,10 +539,8 @@
             const types = ["全部", ...new Set(appState.allData.map(i => i.type).filter(t => t))];
             const container = document.getElementById('typeButtons'); 
             container.innerHTML = '';
-            
             types.forEach(type => {
-                const btn = document.createElement('button'); 
-                btn.className = 'type-btn';
+                const btn = document.createElement('button'); btn.className = 'type-btn';
                 if (type !== "全部") {
                     const style = getCategoryStyle(type);
                     btn.innerHTML = `<i class="fas ${style.icon}" style="color:${style.color}"></i> ${type}`;
@@ -508,52 +573,31 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
-        
-        // --- 🔍 v9.3 絕對防彈版時間判斷 ---
         function parseTime(t) { 
-            // 嚴格檢查：如果不是字串，或不含冒號，直接當 0
-            if (typeof t !== 'string' || !t.includes(':')) return 0;
             try {
+                if (!t || typeof t !== 'string') return 0; 
                 const parts = t.split(':'); 
                 if (parts.length < 2) return 0; 
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]); 
             } catch (e) { return 0; }
         }
-        
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
-        
         function checkIsOpen(hoursStr) {
-            // 防禦第一關：如果沒資料，直接回傳 false
             if (!hoursStr || typeof hoursStr !== 'string') return false;
-            
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
-            
-            const now = new Date(); 
-            const dayOfWeek = now.getDay(); 
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const now = new Date(); const dayOfWeek = now.getDay(); const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const dayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-            
             if (hoursStr.includes(dayMap[dayOfWeek] + "公休") || hoursStr.includes(dayMap[dayOfWeek] + "休息")) return false;
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
-            
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); 
-            // 防禦第二關：如果沒有配對到時間，或者不是陣列，回傳 false
             if (!timeMatches || !Array.isArray(timeMatches) || timeMatches.length < 2) return false;
-            
             let isOpen = false;
-            // 防禦迴圈：確保成對讀取，如果落單就忽略
             for (let i = 0; i < timeMatches.length - 1; i += 2) {
-                const startStr = timeMatches[i];
-                const endStr = timeMatches[i+1];
-                
-                // 防禦第三關：如果抓到的字串有問題，跳過這組
+                const startStr = timeMatches[i]; const endStr = timeMatches[i+1];
                 if (!startStr || !endStr) continue;
-
-                const start = parseTime(startStr); 
-                const end = parseTime(endStr);
-                
+                const start = parseTime(startStr); const end = parseTime(endStr);
                 if (end < start) { if (currentMinutes >= start || currentMinutes <= end) isOpen = true; } 
                 else { if (currentMinutes >= start && currentMinutes <= end) isOpen = true; }
             }
