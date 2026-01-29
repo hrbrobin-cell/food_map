@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (防禦穩定版)</title>
+    <title>全台美食地圖 (v9.3 絕對防彈版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -120,7 +120,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">旗艦版 (穩定防禦 + 大字體)</p>
+        <p class="subtitle">旗艦版 (v9.3 強力防彈版)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -264,6 +264,10 @@
                     newItem.image = newItem.image || ""; 
                     newItem.distance = null;
                     newItem.type = newItem.type ? newItem.type.trim() : "其他";
+                    
+                    // ✨ 關鍵防禦：確保 hours 是字串
+                    newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
+                    
                     return newItem;
                 });
                 document.getElementById('loading').style.display = 'none';
@@ -336,12 +340,15 @@
                 }
             }
             
-            // ✨ 營業中篩選 (安全版)
+            // ✨ 營業中篩選 (安全防護)
             if (appState.isOpenOnly) {
                 results = results.filter(item => {
                     try {
                         return checkIsOpen(item.hours) === true;
-                    } catch (e) { return false; }
+                    } catch (e) { 
+                        // 如果檢查過程發生任何錯誤，直接判定為「非營業中」(安全失敗)
+                        return false; 
+                    }
                 });
             }
 
@@ -502,10 +509,11 @@
         }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
         
-        // --- 🔍 v9.2 最終防呆修復 ---
+        // --- 🔍 v9.3 絕對防彈版時間判斷 ---
         function parseTime(t) { 
+            // 嚴格檢查：如果不是字串，或不含冒號，直接當 0
+            if (typeof t !== 'string' || !t.includes(':')) return 0;
             try {
-                if (!t || typeof t !== 'string') return 0; // 強制型別檢查
                 const parts = t.split(':'); 
                 if (parts.length < 2) return 0; 
                 return parseInt(parts[0]) * 60 + parseInt(parts[1]); 
@@ -515,7 +523,9 @@
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
         
         function checkIsOpen(hoursStr) {
-            if (!hoursStr) return false;
+            // 防禦第一關：如果沒資料，直接回傳 false
+            if (!hoursStr || typeof hoursStr !== 'string') return false;
+            
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
@@ -529,13 +539,21 @@
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
             
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); 
-            if (!timeMatches || timeMatches.length < 2) return false;
+            // 防禦第二關：如果沒有配對到時間，或者不是陣列，回傳 false
+            if (!timeMatches || !Array.isArray(timeMatches) || timeMatches.length < 2) return false;
             
             let isOpen = false;
-            // 防呆迴圈：確保 i+1 存在
+            // 防禦迴圈：確保成對讀取，如果落單就忽略
             for (let i = 0; i < timeMatches.length - 1; i += 2) {
-                const start = parseTime(timeMatches[i]); 
-                const end = parseTime(timeMatches[i+1]);
+                const startStr = timeMatches[i];
+                const endStr = timeMatches[i+1];
+                
+                // 防禦第三關：如果抓到的字串有問題，跳過這組
+                if (!startStr || !endStr) continue;
+
+                const start = parseTime(startStr); 
+                const end = parseTime(endStr);
+                
                 if (end < start) { if (currentMinutes >= start || currentMinutes <= end) isOpen = true; } 
                 else { if (currentMinutes >= start && currentMinutes <= end) isOpen = true; }
             }
