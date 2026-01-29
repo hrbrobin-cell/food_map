@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (智慧類別圖版)</title>
+    <title>全台美食地圖 (完美圖示版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -48,9 +48,21 @@
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
         .food-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
         
-        .card-image { width: 100%; height: 180px; background-color: #eee; position: relative; overflow: hidden; }
-        .card-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
-        .food-card:hover .card-image img { transform: scale(1.05); }
+        /* 圖片容器 */
+        .card-image-box { width: 100%; height: 180px; position: relative; overflow: hidden; background-color: #f0f0f0; }
+        
+        /* 真實圖片 */
+        .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
+        .food-card:hover .card-image-box img { transform: scale(1.05); }
+
+        /* ✨ 缺省圖 (Placeholder) 樣式 */
+        .card-placeholder {
+            width: 100%; height: 100%; display: flex; flex-direction: column; 
+            align-items: center; justify-content: center; color: white;
+            text-align: center;
+        }
+        .card-placeholder i { font-size: 3em; margin-bottom: 8px; opacity: 0.9; }
+        .card-placeholder span { font-size: 1.2em; font-weight: bold; letter-spacing: 1px; opacity: 0.95; text-shadow: 0 2px 4px rgba(0,0,0,0.2); }
 
         .card-content { padding: 15px 20px 20px 20px; display: flex; flex-direction: column; flex-grow: 1; }
 
@@ -90,7 +102,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">專業視覺版 (智慧類別圖)</p>
+        <p class="subtitle">專業視覺版 (完美分類圖示)</p>
         
         <div class="controls-wrapper">
             <div class="controls">
@@ -150,19 +162,18 @@
 
         let appState = { allData: [], currentCity: "", currentDistrict: "全部", currentKeyword: "", isShowingFavs: false, isShowingNearby: false, myFavorites: [] };
         
-        // --- 🧠 智慧類別對照表 (您可以自由新增) ---
-        // keywords: 關鍵字(excel中type有這些字), color: 背景色, icon: emoji, text: 顯示文字
+        // --- 🧠 智慧類別對照表 (使用 CSS 顏色與 FontAwesome 圖示) ---
         const categoryMap = [
-            { keywords: ['燒肉', '烤肉', '串燒', '居酒屋'], color: 'e53e3e', icon: '🍖', text: '燒肉料理' },
-            { keywords: ['火鍋', '鍋物', '涮涮鍋', '麻辣'], color: 'dd6b20', icon: '🍲', text: '精緻鍋物' },
-            { keywords: ['咖啡', '甜點', '下午茶', '蛋糕', 'cafe'], color: 'd53f8c', icon: '🍰', text: '甜點咖啡' },
-            { keywords: ['拉麵', '日式', '壽司', '丼', '生魚片'], color: '3182ce', icon: '🍣', text: '日式料理' },
-            { keywords: ['泰式', '越式', '東南亞', '南洋'], color: '38a169', icon: '🌶️', text: '異國風味' },
-            { keywords: ['小吃', '麵', '飯', '便當', '傳統'], color: 'd69e2e', icon: '🍜', text: '在地小吃' },
-            { keywords: ['義式', '義大利', '披薩', 'pasta'], color: 'e53e3e', icon: '🍝', text: '義式料理' },
-            { keywords: ['美式', '漢堡', '牛排'], color: '2b6cb0', icon: '🍔', text: '美式料理' },
-            { keywords: ['早午餐', '早餐'], color: 'ecc94b', icon: '🍳', text: '早午餐' },
-            { keywords: ['酒吧', '餐酒館', 'bistro'], color: '805ad5', icon: '🍷', text: '餐酒館' }
+            { keywords: ['燒肉', '烤肉', '串燒', '居酒屋'], color: '#e53e3e', icon: 'fa-fire', text: '燒肉料理' },
+            { keywords: ['火鍋', '鍋物', '涮涮鍋', '麻辣'], color: '#dd6b20', icon: 'fa-utensils', text: '精緻鍋物' },
+            { keywords: ['咖啡', '甜點', '下午茶', '蛋糕', 'cafe'], color: '#d53f8c', icon: 'fa-mug-hot', text: '甜點咖啡' },
+            { keywords: ['拉麵', '日式', '壽司', '丼', '生魚片'], color: '#3182ce', icon: 'fa-fish', text: '日式料理' },
+            { keywords: ['泰式', '越式', '東南亞', '南洋'], color: '#38a169', icon: 'fa-leaf', text: '異國風味' },
+            { keywords: ['小吃', '麵', '飯', '便當', '傳統'], color: '#d69e2e', icon: 'fa-bowl-food', text: '在地小吃' },
+            { keywords: ['義式', '義大利', '披薩', 'pasta'], color: '#e53e3e', icon: 'fa-pizza-slice', text: '義式料理' },
+            { keywords: ['美式', '漢堡', '牛排'], color: '#2b6cb0', icon: 'fa-hamburger', text: '美式料理' },
+            { keywords: ['早午餐', '早餐'], color: '#ecc94b', icon: 'fa-egg', text: '早午餐' },
+            { keywords: ['酒吧', '餐酒館', 'bistro'], color: '#805ad5', icon: 'fa-wine-glass', text: '餐酒館' }
         ];
 
         try { appState.myFavorites = JSON.parse(localStorage.getItem('myFoodFavorites')) || []; } catch (e) {}
@@ -210,8 +221,8 @@
                     if (isNaN(newItem.lat) || isNaN(newItem.lng)) { newItem.lat = null; newItem.lng = null; }
                     newItem.rating = parseFloat(newItem.rating || newItem.googlerating || 0);
                     
-                    // ✨ 圖片邏輯：如果沒圖，就用類別產生圖
-                    newItem.image = newItem.image || getCategoryPlaceholder(newItem.type); 
+                    // 這裡只保留 image 網址，如果沒有就留空
+                    newItem.image = newItem.image || ""; 
 
                     newItem.distance = null;
                     return newItem;
@@ -223,25 +234,16 @@
             }
         }
 
-        // ✨ 根據類別產生圖片網址 (使用 Placehold.co)
-        function getCategoryPlaceholder(typeStr) {
+        // ✨ 根據類別回傳樣式設定 (而不是網址)
+        function getCategoryStyle(typeStr) {
             const t = (typeStr || "").toLowerCase();
             let match = categoryMap.find(cat => cat.keywords.some(k => t.includes(k)));
             
             // 預設樣式 (如果都沒對到)
-            let color = "a0aec0"; 
-            let text = "美食照片"; 
-            let icon = "🍽️";
-
-            if (match) {
-                color = match.color;
-                text = match.text;
-                icon = match.icon;
+            if (!match) {
+                return { color: '#a0aec0', icon: 'fa-utensils', text: '精選美食' };
             }
-
-            // 產生圖片網址 (支援 Emoji)
-            // 格式: https://placehold.co/600x400/{color}/white?text={icon}+{text}&font=noto-sans-tc
-            return `https://placehold.co/600x400/${color}/ffffff?text=${icon} ${encodeURIComponent(text)}&font=noto-sans-tc`;
+            return match;
         }
 
         function findNearby() {
@@ -337,9 +339,25 @@
                 const isFav = appState.myFavorites.includes(item.id);
                 const card = document.createElement('div');
                 card.className = 'food-card';
+                
+                // ✨ 圖片顯示邏輯：有圖顯示圖，沒圖顯示 CSS 繪製的分類圖示
+                let imageContent = '';
+                if (item.image) {
+                    imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
+                } else {
+                    // 呼叫智慧分類函式
+                    const cat = getCategoryStyle(item.type);
+                    imageContent = `
+                        <div class="card-placeholder" style="background:${cat.color}">
+                            <i class="fas ${cat.icon}"></i>
+                            <span>${cat.text}</span>
+                        </div>
+                    `;
+                }
+
                 card.innerHTML = `
-                    <div class="card-image">
-                        <img src="${item.image}" alt="${item.name}" loading="lazy">
+                    <div class="card-image-box">
+                        ${imageContent}
                         <button class="${isFav?'heart-btn is-fav':'heart-btn'}" onclick="toggleHeart('${item.id}', this)">❤</button>
                     </div>
                     <div class="card-content">
