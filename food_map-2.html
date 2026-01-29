@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (完美營業篩選版)</title>
+    <title>全台美食地圖 (防呆修正版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
@@ -24,7 +24,6 @@
             font-size: 16px; outline: none; background: white; cursor: pointer; color: #333; font-weight: bold;
         }
 
-        /* ✨ 優化後的 Toggle 開關 (解決點擊無效問題) */
         .toggle-wrapper {
             display: flex; align-items: center; background: white; border: 2px solid #ccc; 
             padding: 5px 15px 5px 5px; border-radius: 30px; height: 50px; box-sizing: border-box; cursor: pointer;
@@ -35,11 +34,8 @@
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-        
-        /* 選中狀態顏色 */
         input:checked + .slider { background-color: #38b2ac; }
         input:checked + .slider:before { transform: translateX(18px); }
-        
         .toggle-label { font-size: 16px; font-weight: bold; color: #555; }
         input:checked ~ .toggle-label { color: #38b2ac; }
 
@@ -101,7 +97,6 @@
         .rating-badge { font-size: 14px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; padding: 3px 10px; border-radius: 15px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
         .dist-badge { font-size: 14px; color: #2d3748; background: #e2e8f0; padding: 3px 10px; border-radius: 15px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; font-weight: bold; }
         
-        /* ✨ 狀態標籤加大加粗 */
         .status-badge { font-size: 14px; padding: 5px 12px; border-radius: 20px; font-weight: 800; white-space: nowrap; margin-left: auto; letter-spacing: 0.5px; }
         .status-open { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; } 
         .status-closed { background-color: #edf2f7; color: #718096; border: 1px solid #cbd5e0; } 
@@ -125,7 +120,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">旗艦版 (大字體 + 營業篩選)</p>
+        <p class="subtitle">旗艦版 (防呆修正)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -273,7 +268,7 @@
                 });
                 document.getElementById('loading').style.display = 'none';
                 
-                renderTypeButtons(); // ✨ 資料載入後，先顯示類別
+                renderTypeButtons(); 
                 renderCityButtons();
             } catch(e) {
                 log("❌ 資料處理錯誤：" + e.message);
@@ -317,10 +312,9 @@
             updateUIState(); applyFiltersAndSort();
         }
 
-        /* --- ✨ 營業中篩選開關 (修正版) --- */
         function toggleOpenFilter() {
             const checkbox = document.getElementById('openFilter');
-            appState.isOpenOnly = checkbox.checked; // 直接讀取，最準確
+            appState.isOpenOnly = checkbox.checked; 
             log(appState.isOpenOnly ? "🟢 開啟：只看營業中" : "⚪ 關閉：顯示全部");
             applyFiltersAndSort();
         }
@@ -342,7 +336,6 @@
                 }
             }
             
-            // ✨ 營業中篩選：嚴格檢查 === true
             if (appState.isOpenOnly) {
                 results = results.filter(item => checkIsOpen(item.hours) === true);
             }
@@ -503,8 +496,17 @@
             return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
         }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
-        function parseTime(t) { const parts = t.split(':'); return parseInt(parts[0]) * 60 + parseInt(parts[1]); }
+        
+        // --- 🔍 v9.1 強力防呆時間判斷 ---
+        function parseTime(t) { 
+            if (!t) return 0; 
+            const parts = t.split(':'); 
+            if (parts.length < 2) return 0; // 防呆
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]); 
+        }
+        
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
+        
         function checkIsOpen(hoursStr) {
             if (!hoursStr) return false;
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
@@ -516,15 +518,17 @@
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const dayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
             
-            // ✨ 1. 最優先檢查公休 (如果今天公休，直接回傳 false)
             if (hoursStr.includes(dayMap[dayOfWeek] + "公休") || hoursStr.includes(dayMap[dayOfWeek] + "休息")) return false;
-            
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
-            const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); if (!timeMatches || timeMatches.length < 2) return null;
+            
+            const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); 
+            if (!timeMatches || timeMatches.length < 2) return false; // 防呆
             
             let isOpen = false;
             for (let i = 0; i < timeMatches.length; i += 2) {
-                const start = parseTime(timeMatches[i]); const end = parseTime(timeMatches[i+1]);
+                if (!timeMatches[i+1]) break; // 防呆：如果少一個結束時間，就跳出
+                const start = parseTime(timeMatches[i]); 
+                const end = parseTime(timeMatches[i+1]);
                 if (end < start) { if (currentMinutes >= start || currentMinutes <= end) isOpen = true; } 
                 else { if (currentMinutes >= start && currentMinutes <= end) isOpen = true; }
             }
