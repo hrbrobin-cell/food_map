@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (防呆修正版)</title>
+    <title>全台美食地圖 (防禦穩定版)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        /* --- CSS 樣式區 --- */
+        /* --- CSS 樣式區 (維持旗艦版設計) --- */
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f7f6; margin: 0; padding: 15px; color: #222; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.2em; letter-spacing: 1px; font-weight: 900; }
@@ -120,7 +120,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">旗艦版 (防呆修正)</p>
+        <p class="subtitle">旗艦版 (穩定防禦 + 大字體)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -336,8 +336,13 @@
                 }
             }
             
+            // ✨ 營業中篩選 (安全版)
             if (appState.isOpenOnly) {
-                results = results.filter(item => checkIsOpen(item.hours) === true);
+                results = results.filter(item => {
+                    try {
+                        return checkIsOpen(item.hours) === true;
+                    } catch (e) { return false; }
+                });
             }
 
             if (appState.isShowingNearby) {
@@ -497,12 +502,14 @@
         }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
         
-        // --- 🔍 v9.1 強力防呆時間判斷 ---
+        // --- 🔍 v9.2 最終防呆修復 ---
         function parseTime(t) { 
-            if (!t) return 0; 
-            const parts = t.split(':'); 
-            if (parts.length < 2) return 0; // 防呆
-            return parseInt(parts[0]) * 60 + parseInt(parts[1]); 
+            try {
+                if (!t || typeof t !== 'string') return 0; // 強制型別檢查
+                const parts = t.split(':'); 
+                if (parts.length < 2) return 0; 
+                return parseInt(parts[0]) * 60 + parseInt(parts[1]); 
+            } catch (e) { return 0; }
         }
         
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
@@ -522,11 +529,11 @@
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
             
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); 
-            if (!timeMatches || timeMatches.length < 2) return false; // 防呆
+            if (!timeMatches || timeMatches.length < 2) return false;
             
             let isOpen = false;
-            for (let i = 0; i < timeMatches.length; i += 2) {
-                if (!timeMatches[i+1]) break; // 防呆：如果少一個結束時間，就跳出
+            // 防呆迴圈：確保 i+1 存在
+            for (let i = 0; i < timeMatches.length - 1; i += 2) {
                 const start = parseTime(timeMatches[i]); 
                 const end = parseTime(timeMatches[i+1]);
                 if (end < start) { if (currentMinutes >= start || currentMinutes <= end) isOpen = true; } 
