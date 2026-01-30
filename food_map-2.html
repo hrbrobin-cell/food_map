@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (終極修復版)</title>
+    <title>全台美食地圖 (v14.0 完整補完版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
     <style>
         /* --- CSS 樣式區 --- */
@@ -136,6 +139,16 @@
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
         
+        /* ✨ 回到頂部按鈕 (修復) */
+        #backToTop {
+            position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; 
+            background: #2c3e50; color: white; border-radius: 50%; border: none; 
+            font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            z-index: 999; display: none; align-items: center; justify-content: center; 
+            transition: 0.3s; opacity: 0.9;
+        }
+        #backToTop:hover { transform: translateY(-3px); background: #38b2ac; }
+
         /* Leaflet Popup */
         .leaflet-popup-content-wrapper { border-radius: 12px; overflow: hidden; padding: 0; }
         .leaflet-popup-content { margin: 0; width: 260px !important; }
@@ -156,7 +169,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v13.0 終極修復版 (YouTube回歸+極速效能)</p>
+        <p class="subtitle">v14.0 完整補完版 (功能全開)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -211,6 +224,8 @@
     
     <div id="debugLog"><strong>System Log:</strong><br></div>
     <div id="toast"></div>
+    
+    <button id="backToTop" onclick="scrollToTop()" title="回到頂部"><i class="fas fa-arrow-up"></i></button>
 
     <script>
         function log(msg) {
@@ -255,7 +270,16 @@
         function init() {
             log("🚀 系統啟動...");
             
-            // 快取優先
+            // 監聽捲動，顯示回到頂部按鈕
+            window.onscroll = function() {
+                const btn = document.getElementById('backToTop');
+                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                    btn.style.display = "flex";
+                } else {
+                    btn.style.display = "none";
+                }
+            };
+
             const cachedData = localStorage.getItem('foodMapData');
             const cachedTime = localStorage.getItem('foodMapData_ts');
             const now = Date.now();
@@ -280,6 +304,8 @@
                 }, 300);
             });
         }
+
+        function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
         function tryFetchData(proxyIndex, isBackground) {
             if (proxyIndex >= proxyList.length) {
@@ -345,7 +371,7 @@
             if (map) return;
             map = L.map('mapContainer').setView([23.9738, 120.9820], 8);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
-            markersGroup = L.layerGroup().addTo(map);
+            markersGroup = L.markerClusterGroup({ showCoverageOnHover: false, zoomToBoundsOnClick: true }).addTo(map);
         }
 
         function renderMap(data) {
@@ -357,15 +383,12 @@
             validData.forEach(item => {
                 const marker = L.marker([item.lat, item.lng]);
                 const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
-                
-                // 安全檢查 hours
                 let isOpen = false;
                 try { isOpen = checkIsOpen(item.hours); } catch(e) {}
-                
                 const statusText = isOpen === true ? '<span style="color:green">● 營業中</span>' : (isOpen === false ? '<span style="color:gray">● 休息中</span>' : '');
                 const popupContent = `<div class="map-popup-card"><div class="map-popup-header">${item.name} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div><div class="map-popup-body"><div class="map-popup-info">${statusText}</div><div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div><div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div><a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a></div></div>`;
                 marker.bindPopup(popupContent);
-                marker.addTo(markersGroup);
+                markersGroup.addLayer(marker); 
                 bounds.push([item.lat, item.lng]);
             });
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
@@ -435,14 +458,9 @@
                 }
                 if (appState.currentType !== "全部") results = results.filter(i => i.type === appState.currentType);
             }
-            
-            // 安全的營業篩選
             if (appState.isOpenOnly) {
-                results = results.filter(item => {
-                    try { return checkIsOpen(item.hours) === true; } catch (e) { return false; }
-                });
+                results = results.filter(item => { try { return checkIsOpen(item.hours) === true; } catch (e) { return false; } });
             }
-
             if (appState.isShowingNearby) {
                 const limit = parseFloat(document.getElementById('rangeSelect').value);
                 results = results.filter(item => item.distance <= limit);
@@ -469,11 +487,14 @@
             else { gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; filterSection.style.display = (appState.currentKeyword || appState.isShowingFavs) ? 'none' : 'block'; }
         }
 
+        // --- ✨ 分享功能 ---
         function shareStore(name, address, rating, url) {
             const text = `【${name}】\n⭐ 評分：${rating || '暫無'}\n🏠 地址：${address}\n📍 地圖：${url}`;
+            // 優先使用原生分享 (需要 HTTPS)
             if (navigator.share) {
                 navigator.share({ title: name, text: text, url: url }).catch((error) => console.log('分享取消', error));
             } else {
+                // 電腦或非 HTTPS 降級為複製
                 navigator.clipboard.writeText(text).then(() => { showToast("✅ 店家資訊已複製！"); });
             }
         }
@@ -494,7 +515,6 @@
                 const displayPhone = formatPhoneNumber(item.phone);
                 const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
                 
-                // 安全檢查
                 let isOpen = false;
                 try { isOpen = checkIsOpen(item.hours); } catch(e) {}
 
@@ -516,8 +536,6 @@
                 if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
                 if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`;
                 if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`;
-                
-                // ✨ 這裡把 YouTube 補回來了！
                 if (item.youtube) buttonsHtml += `<a href="${item.youtube}" target="_blank" class="btn-icon bg-yt"><i class="fab fa-youtube"></i></a>`;
 
                 card.innerHTML = `
@@ -606,24 +624,17 @@
         function formatPhoneNumber(p) { if (!p) return "無"; let c = p.replace(/\D/g, ''); if (c.length === 10 && c.startsWith('09')) return c.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3'); if (c.length === 10 && c.startsWith('0')) return c.replace(/(\d{2})(\d{4})(\d{4})/, '$1-$2-$3'); return p; }
         
         function checkIsOpen(hoursStr) {
-            // 強力防禦
             if (!hoursStr || typeof hoursStr !== 'string') return false;
-            
             let cleanStr = hoursStr.replace(/：/g, ":").replace(/～/g, "-").replace(/~/g, "-").replace(/&/g, ",");
             cleanStr = cleanStr.replace(/\b(\d{4})\b/g, (match) => { return match.slice(0, 2) + ":" + match.slice(2); });
             cleanStr = cleanStr.replace(/\b(\d{3})\b/g, (match) => { return "0" + match.slice(0, 1) + ":" + match.slice(1); });
-            
             const now = new Date(); const dayOfWeek = now.getDay(); const currentMinutes = now.getHours() * 60 + now.getMinutes();
             const dayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
-            
             if (hoursStr.includes(dayMap[dayOfWeek] + "公休") || hoursStr.includes(dayMap[dayOfWeek] + "休息")) return false;
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
-            
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})/g); 
             if (!timeMatches || !Array.isArray(timeMatches) || timeMatches.length < 2) return false;
-            
             let isOpen = false;
-            // 防呆迴圈
             for (let i = 0; i < timeMatches.length - 1; i += 2) {
                 const startStr = timeMatches[i]; const endStr = timeMatches[i+1];
                 if (!startStr || !endStr) continue;
