@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (米其林全制霸版)</title>
+    <title>全台美食地圖 (v17.0 米其林修正版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -26,24 +26,21 @@
         @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
 
         .controls-wrapper { max-width: 900px; margin: 0 auto 20px auto; }
-        .controls-row-1 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .controls-row-1 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; margin-bottom: 12px; }
         
-        .search-box { flex: 2; padding: 12px 20px; border: 2px solid #ccc; min-width: 200px; border-radius: 30px; font-size: 18px; outline: none; transition: 0.3s; }
+        .search-box { flex: 2; padding: 12px 20px; border: 2px solid #ccc; min-width: 180px; border-radius: 30px; font-size: 16px; outline: none; transition: 0.3s; }
         .search-box:focus { border-color: #bd2333; box-shadow: 0 0 8px rgba(189, 35, 51, 0.2); }
 
         .select-pill {
-            min-width: 130px; padding: 0 20px; border: 2px solid #ccc; border-radius: 30px; height: 50px;
-            font-size: 16px; outline: none; background: white; cursor: pointer; color: #333; font-weight: bold;
+            min-width: 130px; padding: 0 15px; border: 2px solid #ccc; border-radius: 30px; height: 48px;
+            font-size: 15px; outline: none; background: white; cursor: pointer; color: #333; font-weight: bold;
         }
         
-        /* ✨ 米其林專用篩選選單 */
-        .select-michelin {
-            border: 2px solid #bd2333; color: #bd2333; background: #fff5f5;
-        }
+        .select-michelin { border: 2px solid #bd2333; color: #bd2333; background: #fff5f5; flex-grow: 1; }
 
         .toggle-wrapper {
             display: flex; align-items: center; background: white; border: 2px solid #ccc; 
-            padding: 5px 15px 5px 5px; border-radius: 30px; height: 50px; box-sizing: border-box; cursor: pointer;
+            padding: 5px 15px 5px 5px; border-radius: 30px; height: 48px; box-sizing: border-box; cursor: pointer;
             user-select: none; transition: 0.2s;
         }
         .toggle-wrapper:hover { border-color: #38b2ac; }
@@ -53,16 +50,20 @@
         .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
         input:checked + .slider { background-color: #38b2ac; }
         input:checked + .slider:before { transform: translateX(18px); }
-        .toggle-label { font-size: 16px; font-weight: bold; color: #555; }
+        .toggle-label { font-size: 15px; font-weight: bold; color: #555; }
         input:checked ~ .toggle-label { color: #38b2ac; }
 
         .controls-row-2 { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        .btn-pill { padding: 0 25px; height: 50px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; border: none; font-size: 16px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .btn-pill { padding: 0 20px; height: 48px; border-radius: 30px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; border: none; font-size: 15px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-fav { background-color: #fff; border: 2px solid #e53e3e; color: #e53e3e; }
         .btn-fav:hover, .btn-fav.active { background-color: #e53e3e; color: white; }
         .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
         .btn-gps.loading { opacity: 0.7; cursor: wait; pointer-events: none; }
+        
+        .btn-reset { background-color: #718096; color: white; }
+        .btn-reset:hover { background-color: #4a5568; }
+        
         .btn-view { background-color: #2d3748; color: white; border: 2px solid #2d3748; }
         .btn-view:hover { background-color: #4a5568; }
 
@@ -70,19 +71,19 @@
         .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
 
         .filter-section { max-width: 1000px; margin: 0 auto 20px auto; text-align: center; }
-        .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
-        .label { font-size: 16px; color: #666; margin-bottom: 10px; display: block; font-weight: bold; }
-        .btn { border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-size: 15px; transition: 0.2s; font-weight: 500; }
+        .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 20px; }
+        .label { font-size: 15px; color: #666; margin-bottom: 8px; display: block; font-weight: bold; }
+        .btn { border: none; padding: 8px 16px; border-radius: 25px; cursor: pointer; font-size: 14px; transition: 0.2s; font-weight: 500; }
         .city-btn { background-color: #e2e8f0; color: #4a5568; }
         .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
         .district-btn { background-color: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
         .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
-        .type-btn { background-color: white; border: 2px solid #eee; color: #444; padding: 8px 16px; border-radius: 25px; cursor: pointer; font-size: 15px; transition: 0.2s; display: flex; align-items: center; gap: 6px; font-weight: bold; }
+        .type-btn { background-color: white; border: 2px solid #eee; color: #444; padding: 8px 14px; border-radius: 25px; cursor: pointer; font-size: 14px; transition: 0.2s; display: flex; align-items: center; gap: 5px; font-weight: bold; }
         .type-btn:hover { background-color: #f7fafc; transform: translateY(-2px); border-color: #cbd5e0; }
         .type-btn.active { background-color: #4a5568; color: white; border-color: #4a5568; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: scale(1.05); }
-        .type-btn i { font-size: 1.2em; }
+        .type-btn i { font-size: 1.1em; }
 
-        .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
+        .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
         #mapContainer { display: none; width: 100%; height: 75vh; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #fff; z-index: 1; }
 
         .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
@@ -90,19 +91,18 @@
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .food-card:hover .card-image-box img { transform: scale(1.05); }
 
-        /* ✨ 米其林徽章設計 (仿官網風格) */
         .michelin-badge {
             position: absolute; top: 10px; left: 10px; z-index: 5;
-            padding: 5px 12px; border-radius: 4px; color: white; font-weight: 800; font-size: 13px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
-            animation: popIn 0.5s;
+            padding: 5px 10px; border-radius: 6px; color: white; font-weight: 800; font-size: 13px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 5px;
+            animation: popIn 0.5s; backdrop-filter: blur(2px);
         }
         .bg-star { background: #bd2333; }
         .bg-bib { background: #bd2333; }
-        .bg-selected { background: #333; } /* 入選餐廳用黑色或深灰 */
+        .bg-selected { background: #333; }
 
         .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
-        .action-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); color: white; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .action-btn { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); color: white; font-size: 1.1em; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .action-btn:hover { background: rgba(0,0,0,0.7); transform: scale(1.1); }
         .action-btn.is-fav { background: white; color: #ff4757; }
         .action-btn.share-btn:hover { background: white; color: #3182ce; }
@@ -113,22 +113,22 @@
 
         .card-content { padding: 20px; display: flex; flex-direction: column; flex-grow: 1; }
         .card-top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-        .meta-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .meta-tag { font-size: 13px; color: #444; background: #edf2f7; padding: 4px 10px; border-radius: 6px; display: inline-block; cursor: pointer; transition: 0.2s; font-weight: 500; }
+        .meta-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .meta-tag { font-size: 12px; color: #444; background: #edf2f7; padding: 4px 8px; border-radius: 6px; display: inline-block; cursor: pointer; transition: 0.2s; font-weight: 500; }
         .meta-tag:hover { background: #cbd5e0; color: #1a202c; }
         
-        .card-title { margin: 5px 0 15px 0; color: #1a202c; font-size: 1.6em; font-weight: 800; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; line-height: 1.3; }
-        .rating-badge { font-size: 14px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; padding: 3px 10px; border-radius: 15px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
-        .dist-badge { font-size: 14px; color: #2d3748; background: #e2e8f0; padding: 3px 10px; border-radius: 15px; display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; font-weight: bold; }
+        .card-title { margin: 5px 0 12px 0; color: #1a202c; font-size: 1.5em; font-weight: 800; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; line-height: 1.3; }
+        .rating-badge { font-size: 13px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; padding: 3px 8px; border-radius: 15px; font-weight: bold; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; }
+        .dist-badge { font-size: 13px; color: #2d3748; background: #e2e8f0; padding: 3px 8px; border-radius: 15px; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; font-weight: bold; }
         
-        .status-badge { font-size: 14px; padding: 5px 12px; border-radius: 20px; font-weight: 800; white-space: nowrap; margin-left: auto; letter-spacing: 0.5px; }
+        .status-badge { font-size: 13px; padding: 4px 10px; border-radius: 15px; font-weight: 800; white-space: nowrap; margin-left: auto; letter-spacing: 0.5px; }
         .status-open { background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; } 
         .status-closed { background-color: #edf2f7; color: #718096; border: 1px solid #cbd5e0; } 
 
-        .info-row { display: flex; align-items: flex-start; margin-bottom: 10px; font-size: 1.05em; color: #333; line-height: 1.5; }
-        .info-icon { margin-right: 12px; width: 18px; text-align: center; color: #38b2ac; margin-top: 3px; font-size: 1.1em; }
+        .info-row { display: flex; align-items: flex-start; margin-bottom: 8px; font-size: 1.05em; color: #333; line-height: 1.5; }
+        .info-icon { margin-right: 10px; width: 18px; text-align: center; color: #38b2ac; margin-top: 3px; font-size: 1.1em; }
         .hours-text { color: #e53e3e; font-weight: bold; }
-        .note { background: #f8f9fa; color: #555; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 0.95em; line-height: 1.6; }
+        .note { background: #f8f9fa; color: #555; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 0.95em; line-height: 1.6; }
         
         .btn-group { display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
         .btn-nav { flex-grow: 1; height: 44px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 1em; transition: 0.2s; box-shadow: 0 3px 6px rgba(56, 178, 172, 0.25); }
@@ -162,14 +162,14 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v16.0 米其林全制霸版</p>
+        <p class="subtitle">v17.0 米其林修正版</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
                 <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名/關鍵字...">
                 
                 <select id="michelinSelect" class="select-pill select-michelin" onchange="applyFiltersAndSort()">
-                    <option value="all">🏆 選擇米其林等級...</option>
+                    <option value="all">⭕ 顯示所有店家 (含非米其林)</option>
                     <option value="any">✨ 顯示所有米其林</option>
                     <option value="3">⭐⭐⭐ 三星</option>
                     <option value="2">⭐⭐ 二星</option>
@@ -178,13 +178,9 @@
                     <option value="selected">🍽️ 入選餐廳</option>
                 </select>
 
-                <label class="toggle-wrapper">
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="openFilter" onchange="toggleOpenFilter()">
-                        <span class="slider"></span>
-                    </div>
-                    <span class="toggle-label">營業中</span>
-                </label>
+                <button class="btn-pill btn-reset" onclick="resetAllFilters()">
+                    <i class="fas fa-undo"></i> 重置
+                </button>
             </div>
 
             <div class="controls-row-2">
@@ -200,6 +196,14 @@
                     <option value="dist" selected>📍 距離近→遠</option>
                     <option value="rating">⭐ 評分高→低</option>
                 </select>
+
+                <label class="toggle-wrapper">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="openFilter" onchange="toggleOpenFilter()">
+                        <span class="slider"></span>
+                    </div>
+                    <span class="toggle-label">營業中</span>
+                </label>
 
                 <button id="gpsBtn" class="btn-pill btn-gps" onclick="findNearby()">
                     <i class="fas fa-location-arrow"></i> 附近
@@ -217,7 +221,7 @@
     <div id="loadingMsg" class="loading"></div>
     
     <div class="filter-section" id="filterSection">
-        <span class="label">1. 美食類別 (可快速篩選)</span>
+        <span class="label">1. 美食類別</span>
         <div id="typeButtons" class="btn-container"></div>
         <span class="label">2. 選擇縣市</span>
         <div id="cityButtons" class="btn-container"></div>
@@ -276,14 +280,9 @@
 
         function init() {
             log("🚀 系統啟動...");
-            
             window.onscroll = function() {
                 const btn = document.getElementById('backToTop');
-                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                    btn.style.display = "flex";
-                } else {
-                    btn.style.display = "none";
-                }
+                if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) btn.style.display = "flex"; else btn.style.display = "none";
             };
 
             const cachedData = localStorage.getItem('foodMapData');
@@ -355,7 +354,7 @@
                     newItem.type = newItem.type ? newItem.type.trim() : "其他";
                     newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
                     
-                    // ✨ 解析米其林欄位 (存為字串型態)
+                    // ✨ 解析米其林欄位
                     newItem.michelinType = newItem.michelin ? newItem.michelin.toString().trim().toLowerCase() : "";
                     
                     return newItem;
@@ -370,7 +369,7 @@
             } catch(e) { log("❌ Error: " + e.message); }
         }
 
-        // ✨ 取得米其林徽章 HTML (根據欄位值)
+        // ✨ 取得米其林徽章 HTML
         function getMichelinBadge(type) {
             if (!type) return "";
             if (type === '3') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林三星</div>`;
@@ -441,7 +440,7 @@
         }
 
         function findNearby() {
-            if (appState.isShowingNearby) { resetToDefaultView(); return; }
+            if (appState.isShowingNearby) { resetAllFilters(); return; }
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
             gpsBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 定位中...';
@@ -473,15 +472,25 @@
             applyFiltersAndSort();
         }
 
-        // ✨ 核心篩選邏輯更新
+        // ✨ 重置按鈕
+        function resetAllFilters() {
+            appState.isShowingNearby = false; appState.isShowingFavs = false; appState.currentKeyword = ""; appState.currentType = "全部"; appState.isOpenOnly = false;
+            document.getElementById('searchInput').value = "";
+            document.getElementById('michelinSelect').value = "all";
+            document.getElementById('openFilter').checked = false;
+            
+            updateUIState(); renderTypeButtons(); 
+            if (appState.currentCity) filterByCity(appState.currentCity); else renderCityButtons();
+            log("🔄 已重置所有篩選條件");
+        }
+
+        // ✨ 核心篩選邏輯 (修正版)
         function applyFiltersAndSort() {
             let results = [...appState.allData];
             
-            // 口袋名單優先
             if (appState.isShowingFavs) {
                 results = results.filter(i => appState.myFavorites.includes(i.id));
             } else {
-                // 一般篩選
                 if (appState.currentKeyword) {
                     results = results.filter(item => item.name.toLowerCase().includes(appState.currentKeyword));
                 } else if (appState.currentCity) {
@@ -491,7 +500,6 @@
                 if (appState.currentType !== "全部") results = results.filter(i => i.type === appState.currentType);
             }
             
-            // 營業中篩選
             if (appState.isOpenOnly) {
                 results = results.filter(item => {
                     try { return checkIsOpen(item.hours) === true; } catch (e) { return false; }
@@ -502,7 +510,7 @@
             const michelinMode = document.getElementById('michelinSelect').value;
             if (michelinMode !== 'all') {
                 if (michelinMode === 'any') {
-                    results = results.filter(i => i.michelinType !== ""); // 只要有任何米其林標記都算
+                    results = results.filter(i => i.michelinType !== ""); // 只要有任何標記
                 } else {
                     results = results.filter(i => i.michelinType === michelinMode); // 特定等級
                 }
@@ -517,14 +525,6 @@
             
             if (appState.viewMode === 'list') renderFood(results);
             else renderMap(results);
-        }
-
-        function resetToDefaultView() {
-            appState.isShowingNearby = false; appState.isShowingFavs = false; appState.currentKeyword = ""; appState.currentType = "全部";
-            document.getElementById('searchInput').value = "";
-            document.getElementById('michelinSelect').value = "all"; // 重置米其林
-            updateUIState(); renderTypeButtons(); 
-            if (appState.currentCity) filterByCity(appState.currentCity); else renderCityButtons();
         }
 
         function updateUIState() {
@@ -578,7 +578,7 @@
                     imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`;
                 }
 
-                // ✨ 取得對應的米其林徽章
+                // ✨ 米其林標示
                 const michelinBadge = getMichelinBadge(item.michelinType);
 
                 let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
