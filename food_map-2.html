@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (米其林指南版)</title>
+    <title>全台美食地圖 (米其林全制霸版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -21,7 +21,6 @@
         h1 { color: #2c3e50; margin-bottom: 10px; font-size: 2.2em; letter-spacing: 1px; font-weight: 900; }
         .subtitle { color: #555; font-size: 1.1em; margin-bottom: 25px; }
         
-        /* 進度條 */
         .loading-bar { width: 100%; background: #e2e8f0; height: 4px; position: fixed; top: 0; left: 0; z-index: 9999; display: none; }
         .loading-bar .bar { height: 100%; background: #bd2333; animation: load 1.5s infinite ease-in-out; width: 50%; }
         @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
@@ -30,11 +29,16 @@
         .controls-row-1 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 12px; margin-bottom: 12px; }
         
         .search-box { flex: 2; padding: 12px 20px; border: 2px solid #ccc; min-width: 200px; border-radius: 30px; font-size: 18px; outline: none; transition: 0.3s; }
-        .search-box:focus { border-color: #38b2ac; box-shadow: 0 0 8px rgba(56, 178, 172, 0.3); }
+        .search-box:focus { border-color: #bd2333; box-shadow: 0 0 8px rgba(189, 35, 51, 0.2); }
 
         .select-pill {
             min-width: 130px; padding: 0 20px; border: 2px solid #ccc; border-radius: 30px; height: 50px;
             font-size: 16px; outline: none; background: white; cursor: pointer; color: #333; font-weight: bold;
+        }
+        
+        /* ✨ 米其林專用篩選選單 */
+        .select-michelin {
+            border: 2px solid #bd2333; color: #bd2333; background: #fff5f5;
         }
 
         .toggle-wrapper {
@@ -59,13 +63,8 @@
         .btn-gps { background-color: #fff; border: 2px solid #38b2ac; color: #38b2ac; }
         .btn-gps:hover, .btn-gps.active { background-color: #38b2ac; color: white; }
         .btn-gps.loading { opacity: 0.7; cursor: wait; pointer-events: none; }
-        
         .btn-view { background-color: #2d3748; color: white; border: 2px solid #2d3748; }
         .btn-view:hover { background-color: #4a5568; }
-
-        /* ✨ 米其林專屬按鈕 */
-        .btn-michelin { background-color: #fff; border: 2px solid #bd2333; color: #bd2333; }
-        .btn-michelin:hover, .btn-michelin.active { background-color: #bd2333; color: white; box-shadow: 0 4px 12px rgba(189, 35, 51, 0.4); }
 
         .loading { text-align: center; color: #38b2ac; font-weight: bold; padding: 20px; font-size: 1.2em; display: none; }
         .error-msg { color: #e53e3e; background: #fff5f5; padding: 15px; border-radius: 10px; border: 1px solid #fc8181; display: inline-block; text-align: left; }
@@ -73,48 +72,37 @@
         .filter-section { max-width: 1000px; margin: 0 auto 20px auto; text-align: center; }
         .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 20px; }
         .label { font-size: 16px; color: #666; margin-bottom: 10px; display: block; font-weight: bold; }
-        
         .btn { border: none; padding: 8px 18px; border-radius: 25px; cursor: pointer; font-size: 15px; transition: 0.2s; font-weight: 500; }
         .city-btn { background-color: #e2e8f0; color: #4a5568; }
         .city-btn.active { background-color: #2d3748; color: white; transform: scale(1.05); box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
         .district-btn { background-color: #e6fffa; color: #2c7a7b; border: 1px solid #b2f5ea; }
         .district-btn.active { background-color: #38b2ac; color: white; border-color: #38b2ac; }
-
-        .type-btn { 
-            background-color: white; border: 2px solid #eee; color: #444; 
-            padding: 8px 16px; border-radius: 25px; cursor: pointer; font-size: 15px; 
-            transition: 0.2s; display: flex; align-items: center; gap: 6px; font-weight: bold;
-        }
+        .type-btn { background-color: white; border: 2px solid #eee; color: #444; padding: 8px 16px; border-radius: 25px; cursor: pointer; font-size: 15px; transition: 0.2s; display: flex; align-items: center; gap: 6px; font-weight: bold; }
         .type-btn:hover { background-color: #f7fafc; transform: translateY(-2px); border-color: #cbd5e0; }
         .type-btn.active { background-color: #4a5568; color: white; border-color: #4a5568; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: scale(1.05); }
         .type-btn i { font-size: 1.2em; }
 
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
-        
         #mapContainer { display: none; width: 100%; height: 75vh; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 2px solid #fff; z-index: 1; }
 
         .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; display: flex; flex-direction: column; animation: fadeIn 0.4s; position: relative; }
-        
         .card-image-box { width: 100%; height: 200px; position: relative; overflow: hidden; background-color: #f0f0f0; }
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .food-card:hover .card-image-box img { transform: scale(1.05); }
 
-        /* ✨ 米其林專屬徽章 (左上角懸浮) */
-        .michelin-float-badge {
+        /* ✨ 米其林徽章設計 (仿官網風格) */
+        .michelin-badge {
             position: absolute; top: 10px; left: 10px; z-index: 5;
-            background: #bd2333; color: white; padding: 5px 12px; border-radius: 20px;
-            font-size: 13px; font-weight: bold; box-shadow: 0 4px 8px rgba(189, 35, 51, 0.4);
-            display: flex; align-items: center; gap: 5px; animation: popIn 0.5s;
+            padding: 5px 12px; border-radius: 4px; color: white; font-weight: 800; font-size: 13px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); display: flex; align-items: center; gap: 5px;
+            animation: popIn 0.5s;
         }
-        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+        .bg-star { background: #bd2333; }
+        .bg-bib { background: #bd2333; }
+        .bg-selected { background: #333; } /* 入選餐廳用黑色或深灰 */
 
         .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
-        .action-btn { 
-            width: 40px; height: 40px; border-radius: 50%; border: none; 
-            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
-            color: white; font-size: 1.2em; cursor: pointer; display: flex; 
-            align-items: center; justify-content: center; transition: 0.2s;
-        }
+        .action-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); color: white; font-size: 1.2em; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .action-btn:hover { background: rgba(0,0,0,0.7); transform: scale(1.1); }
         .action-btn.is-fav { background: white; color: #ff4757; }
         .action-btn.share-btn:hover { background: white; color: #3182ce; }
@@ -152,13 +140,7 @@
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; font-size: 17px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
         #toast.show { visibility: visible; opacity: 1; }
         
-        #backToTop {
-            position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; 
-            background: #2c3e50; color: white; border-radius: 50%; border: none; 
-            font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
-            z-index: 999; display: none; align-items: center; justify-content: center; 
-            transition: 0.3s; opacity: 0.9;
-        }
+        #backToTop { position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; background: #2c3e50; color: white; border-radius: 50%; border: none; font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 999; display: none; align-items: center; justify-content: center; transition: 0.3s; opacity: 0.9; }
         #backToTop:hover { transform: translateY(-3px); background: #38b2ac; }
 
         .leaflet-popup-content-wrapper { border-radius: 12px; overflow: hidden; padding: 0; }
@@ -170,7 +152,7 @@
         .map-popup-btn { display: block; text-align: center; background: #2d3748; color: white; padding: 8px; margin-top: 10px; border-radius: 6px; text-decoration: none; font-weight: bold; }
 
         #debugLog { margin-top: 50px; padding: 15px; background: #2d3748; color: #00ff00; font-family: monospace; border-radius: 8px; font-size: 12px; max-height: 200px; overflow-y: auto; display: none; }
-        
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -180,11 +162,32 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v15.0 米其林旗艦版 (雙模+完整功能)</p>
+        <p class="subtitle">v16.0 米其林全制霸版</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
                 <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名/關鍵字...">
+                
+                <select id="michelinSelect" class="select-pill select-michelin" onchange="applyFiltersAndSort()">
+                    <option value="all">🏆 選擇米其林等級...</option>
+                    <option value="any">✨ 顯示所有米其林</option>
+                    <option value="3">⭐⭐⭐ 三星</option>
+                    <option value="2">⭐⭐ 二星</option>
+                    <option value="1">⭐ 一星</option>
+                    <option value="bib">😋 必比登推介</option>
+                    <option value="selected">🍽️ 入選餐廳</option>
+                </select>
+
+                <label class="toggle-wrapper">
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="openFilter" onchange="toggleOpenFilter()">
+                        <span class="slider"></span>
+                    </div>
+                    <span class="toggle-label">營業中</span>
+                </label>
+            </div>
+
+            <div class="controls-row-2">
                 <select id="rangeSelect" class="select-pill" onchange="applyFiltersAndSort()">
                     <option value="99999">📏 距離: 全部</option>
                     <option value="1">1 公里內</option>
@@ -192,20 +195,12 @@
                     <option value="5" selected>5 公里內</option>
                     <option value="10">10 公里內</option>
                 </select>
+
                 <select id="sortSelect" class="select-pill" onchange="applyFiltersAndSort()">
                     <option value="dist" selected>📍 距離近→遠</option>
                     <option value="rating">⭐ 評分高→低</option>
                 </select>
-                <label class="toggle-wrapper">
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="openFilter" onchange="toggleOpenFilter()">
-                        <span class="slider"></span>
-                    </div>
-                    <span class="toggle-label">只顯示營業中</span>
-                </label>
-            </div>
 
-            <div class="controls-row-2">
                 <button id="gpsBtn" class="btn-pill btn-gps" onclick="findNearby()">
                     <i class="fas fa-location-arrow"></i> 附近
                 </button>
@@ -214,10 +209,6 @@
                 </button>
                 <button id="viewBtn" class="btn-pill btn-view" onclick="toggleViewMode()">
                     <i class="fas fa-map-marked-alt"></i> 地圖
-                </button>
-                
-                <button id="michelinBtn" class="btn-pill btn-michelin" onclick="toggleMichelinFilter()">
-                    <i class="fas fa-award"></i> 只看必比登
                 </button>
             </div>
         </div>
@@ -260,7 +251,6 @@
         let appState = { 
             allData: [], currentCity: "", currentDistrict: "全部", currentType: "全部", currentKeyword: "", 
             isShowingFavs: false, isShowingNearby: false, isOpenOnly: false, 
-            isMichelinOnly: false, // ✨ 米其林開關
             myFavorites: [], viewMode: 'list' 
         };
         
@@ -287,7 +277,6 @@
         function init() {
             log("🚀 系統啟動...");
             
-            // 回到頂部監聽
             window.onscroll = function() {
                 const btn = document.getElementById('backToTop');
                 if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
@@ -366,8 +355,8 @@
                     newItem.type = newItem.type ? newItem.type.trim() : "其他";
                     newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
                     
-                    // ✨ 解析米其林欄位 (只要有填東西就是 true)
-                    newItem.michelin = newItem.michelin && newItem.michelin.trim() !== ""; 
+                    // ✨ 解析米其林欄位 (存為字串型態)
+                    newItem.michelinType = newItem.michelin ? newItem.michelin.toString().trim().toLowerCase() : "";
                     
                     return newItem;
                 });
@@ -379,6 +368,17 @@
                     else applyFiltersAndSort();
                 }
             } catch(e) { log("❌ Error: " + e.message); }
+        }
+
+        // ✨ 取得米其林徽章 HTML (根據欄位值)
+        function getMichelinBadge(type) {
+            if (!type) return "";
+            if (type === '3') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林三星</div>`;
+            if (type === '2') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林二星</div>`;
+            if (type === '1') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i> 米其林一星</div>`;
+            if (type === 'bib') return `<div class="michelin-badge bg-bib"><i class="fas fa-smile-beam"></i> 必比登推介</div>`;
+            if (type === 'selected') return `<div class="michelin-badge bg-selected"><i class="fas fa-utensils"></i> 入選餐廳</div>`;
+            return "";
         }
 
         function getCategoryStyle(typeStr) {
@@ -408,9 +408,11 @@
                 try { isOpen = checkIsOpen(item.hours); } catch(e) {}
                 const statusText = isOpen === true ? '<span style="color:green">● 營業中</span>' : (isOpen === false ? '<span style="color:gray">● 休息中</span>' : '');
                 
-                // ✨ 地圖 Popup 也要加米其林標示
                 let title = item.name;
-                if(item.michelin) title = `🏆 ${item.name}`;
+                if(item.michelinType === '3') title = `⭐⭐⭐ ${item.name}`;
+                else if(item.michelinType === '2') title = `⭐⭐ ${item.name}`;
+                else if(item.michelinType === '1') title = `⭐ ${item.name}`;
+                else if(item.michelinType === 'bib') title = `😋 ${item.name}`;
 
                 const popupContent = `<div class="map-popup-card"><div class="map-popup-header">${title} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div><div class="map-popup-body"><div class="map-popup-info">${statusText}</div><div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div><div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div><a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a></div></div>`;
                 marker.bindPopup(popupContent);
@@ -471,29 +473,15 @@
             applyFiltersAndSort();
         }
 
-        // ✨ 米其林開關
-        function toggleMichelinFilter() {
-            const btn = document.getElementById('michelinBtn');
-            appState.isMichelinOnly = !appState.isMichelinOnly;
-            
-            if (appState.isMichelinOnly) {
-                btn.classList.add('active');
-                appState.isShowingFavs = false; // 互斥
-                log("🏆 只顯示米其林必比登");
-            } else {
-                btn.classList.remove('active');
-                log("⚪ 顯示所有餐廳");
-            }
-            updateUIState();
-            applyFiltersAndSort();
-        }
-
+        // ✨ 核心篩選邏輯更新
         function applyFiltersAndSort() {
             let results = [...appState.allData];
             
+            // 口袋名單優先
             if (appState.isShowingFavs) {
                 results = results.filter(i => appState.myFavorites.includes(i.id));
             } else {
+                // 一般篩選
                 if (appState.currentKeyword) {
                     results = results.filter(item => item.name.toLowerCase().includes(appState.currentKeyword));
                 } else if (appState.currentCity) {
@@ -510,9 +498,14 @@
                 });
             }
 
-            // ✨ 米其林篩選
-            if (appState.isMichelinOnly) {
-                results = results.filter(item => item.michelin === true);
+            // ✨ 米其林多重篩選
+            const michelinMode = document.getElementById('michelinSelect').value;
+            if (michelinMode !== 'all') {
+                if (michelinMode === 'any') {
+                    results = results.filter(i => i.michelinType !== ""); // 只要有任何米其林標記都算
+                } else {
+                    results = results.filter(i => i.michelinType === michelinMode); // 特定等級
+                }
             }
 
             if (appState.isShowingNearby) {
@@ -529,6 +522,7 @@
         function resetToDefaultView() {
             appState.isShowingNearby = false; appState.isShowingFavs = false; appState.currentKeyword = ""; appState.currentType = "全部";
             document.getElementById('searchInput').value = "";
+            document.getElementById('michelinSelect').value = "all"; // 重置米其林
             updateUIState(); renderTypeButtons(); 
             if (appState.currentCity) filterByCity(appState.currentCity); else renderCityButtons();
         }
@@ -538,17 +532,14 @@
             gpsBtn.classList.remove('loading'); 
             if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; }
             if (appState.isShowingNearby) { gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; filterSection.style.display = 'none'; } 
-            else { gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近美食'; filterSection.style.display = (appState.currentKeyword || appState.isShowingFavs) ? 'none' : 'block'; }
+            else { gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近'; filterSection.style.display = (appState.currentKeyword || appState.isShowingFavs) ? 'none' : 'block'; }
         }
 
-        // ✨ 分享功能 (修復)
         function shareStore(name, address, rating, url) {
             const text = `【${name}】\n⭐ 評分：${rating || '暫無'}\n🏠 地址：${address}\n📍 地圖：${url}`;
-            // 優先使用原生分享 (需要 HTTPS)
             if (navigator.share) {
                 navigator.share({ title: name, text: text, url: url }).catch((error) => console.log('分享取消', error));
             } else {
-                // 電腦或非 HTTPS 降級為複製
                 navigator.clipboard.writeText(text).then(() => { showToast("✅ 店家資訊已複製！"); });
             }
         }
@@ -587,11 +578,8 @@
                     imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`;
                 }
 
-                // ✨ 米其林標示 (懸浮在左上角)
-                let michelinBadge = '';
-                if(item.michelin) {
-                    michelinBadge = `<div class="michelin-float-badge"><i class="fas fa-award"></i> 必比登推介</div>`;
-                }
+                // ✨ 取得對應的米其林徽章
+                const michelinBadge = getMichelinBadge(item.michelinType);
 
                 let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
                 if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
