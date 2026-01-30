@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v17.0 絕對重置版)</title>
+    <title>全台美食地圖 (v18.0 米其林修正版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -36,7 +36,6 @@
             font-size: 15px; outline: none; background: white; cursor: pointer; color: #333; font-weight: bold;
         }
         
-        /* 米其林選單 */
         .select-michelin { border: 2px solid #bd2333; color: #bd2333; background: #fff5f5; }
 
         .toggle-wrapper {
@@ -67,7 +66,6 @@
         .btn-view { background-color: #2d3748; color: white; border: 2px solid #2d3748; }
         .btn-view:hover { background-color: #4a5568; }
 
-        /* ✨ 重置按鈕 */
         .btn-reset { background-color: #718096; color: white; border: 2px solid #718096; }
         .btn-reset:hover { background-color: #4a5568; transform: rotate(180deg); }
 
@@ -95,7 +93,6 @@
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; }
         .food-card:hover .card-image-box img { transform: scale(1.05); }
 
-        /* 米其林徽章 */
         .michelin-badge {
             position: absolute; top: 10px; left: 10px; z-index: 5;
             padding: 5px 12px; border-radius: 4px; color: white; font-weight: 800; font-size: 13px;
@@ -163,19 +160,19 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v17.0 米其林全制霸版 (絕對重置)</p>
+        <p class="subtitle">v18.0 米其林修正版 (含必比登推薦)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
                 <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名/關鍵字...">
                 
                 <select id="michelinSelect" class="select-pill select-michelin" onchange="applyFiltersAndSort()">
-                    <option value="all">⭕ 顯示所有店家 (含無星級)</option>
+                    <option value="all">⭕ 不限米其林等級 (顯示全部)</option>
                     <option value="any">✨ 顯示所有米其林</option>
                     <option value="3">⭐⭐⭐ 三星</option>
                     <option value="2">⭐⭐ 二星</option>
                     <option value="1">⭐ 一星</option>
-                    <option value="bib">😋 必比登推介</option>
+                    <option value="bib">😋 必比登推薦</option>
                     <option value="selected">🍽️ 入選餐廳</option>
                 </select>
 
@@ -380,7 +377,7 @@
             if (type === '3') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林三星</div>`;
             if (type === '2') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林二星</div>`;
             if (type === '1') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i> 米其林一星</div>`;
-            if (type === 'bib') return `<div class="michelin-badge bg-bib"><i class="fas fa-smile-beam"></i> 必比登推介</div>`;
+            if (type === 'bib') return `<div class="michelin-badge bg-bib"><i class="fas fa-smile-beam"></i> 必比登推薦</div>`;
             if (type === 'selected') return `<div class="michelin-badge bg-selected"><i class="fas fa-utensils"></i> 入選餐廳</div>`;
             return "";
         }
@@ -487,15 +484,14 @@
             appState.currentCity = ""; 
             appState.currentDistrict = "全部";
 
-            // 重置 UI 元件
             document.getElementById('searchInput').value = "";
             document.getElementById('michelinSelect').value = "all";
             document.getElementById('openFilter').checked = false;
             document.getElementById('rangeSelect').value = "99999";
             
             updateUIState();
-            renderTypeButtons(); // 重繪類別按鈕
-            renderCityButtons(); // 重繪縣市按鈕
+            renderTypeButtons(); 
+            renderCityButtons(); 
             showToast("🔄 所有篩選已重置");
         }
 
@@ -542,7 +538,6 @@
         }
 
         function resetToDefaultView() {
-            // 這個函式現在主要給 GPS 模式取消使用
             appState.isShowingNearby = false;
             updateUIState();
             applyFiltersAndSort();
