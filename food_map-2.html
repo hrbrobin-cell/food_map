@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v19.0 全域視野版)</title>
+    <title>全台美食地圖 (v20.0 訂位整合版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -128,9 +128,17 @@
         .info-icon { margin-right: 12px; width: 18px; text-align: center; color: #38b2ac; margin-top: 3px; font-size: 1.1em; }
         .hours-text { color: #e53e3e; font-weight: bold; }
         .note { background: #f8f9fa; color: #555; padding: 12px; border-radius: 8px; margin: 12px 0; font-size: 0.95em; line-height: 1.6; }
+        
         .btn-group { display: flex; gap: 10px; margin-top: auto; padding-top: 15px; border-top: 1px solid #eee; }
+        
+        /* 導航按鈕 (Teal) */
         .btn-nav { flex-grow: 1; height: 44px; background-color: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 1em; transition: 0.2s; box-shadow: 0 3px 6px rgba(56, 178, 172, 0.25); }
         .btn-nav:hover { background-color: #319795; transform: translateY(-2px); }
+        
+        /* ✨ 訂位按鈕 (Warm Orange) */
+        .btn-booking { flex-grow: 1; height: 44px; background-color: #ed8936; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; font-size: 1em; transition: 0.2s; box-shadow: 0 3px 6px rgba(237, 137, 54, 0.25); }
+        .btn-booking:hover { background-color: #dd6b20; transform: translateY(-2px); }
+
         .btn-icon { width: 44px; height: 44px; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-size: 1.3em; transition: 0.2s; color: white; border: 1px solid #eee; flex-shrink: 0; }
         .btn-icon:hover { transform: translateY(-2px); filter: brightness(0.95); }
         .bg-web { color: #ed8936; } .bg-fb { color: #1877F2; } .bg-ig { color: #d6249f; } .bg-yt { color: #FF0000; } 
@@ -160,7 +168,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v19.0 全域視野版 (全台總覽 + 米其林)</p>
+        <p class="subtitle">v20.0 訂位整合版</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -253,11 +261,7 @@
         const proxyList = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest='];
 
         let appState = { 
-            allData: [], 
-            currentCity: "全台", // ✨ 預設全台
-            currentDistrict: "全部", 
-            currentType: "全部", 
-            currentKeyword: "", 
+            allData: [], currentCity: "全台", currentDistrict: "全部", currentType: "全部", currentKeyword: "", 
             isShowingFavs: false, isShowingNearby: false, isOpenOnly: false, 
             myFavorites: [], viewMode: 'list' 
         };
@@ -363,13 +367,16 @@
                     newItem.type = newItem.type ? newItem.type.trim() : "其他";
                     newItem.hours = newItem.hours ? String(newItem.hours) : ""; 
                     newItem.michelinType = newItem.michelin ? newItem.michelin.toString().trim().toLowerCase() : "";
+                    
+                    // ✨ 讀取訂位欄位
+                    newItem.booking = newItem.booking || "";
+
                     return newItem;
                 });
                 
                 if(refreshUI) {
                     renderTypeButtons(); 
-                    renderCityButtons(); // 會自動處理「全台」按鈕
-                    // 初次載入預設為全台，不進入 GPS
+                    renderCityButtons();
                     applyFiltersAndSort();
                 }
             } catch(e) { log("❌ Error: " + e.message); }
@@ -394,7 +401,7 @@
 
         function initMap() {
             if (map) return;
-            map = L.map('mapContainer').setView([23.9738, 120.9820], 7); // 縮放拉遠看全台
+            map = L.map('mapContainer').setView([23.9738, 120.9820], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
             markersGroup = L.markerClusterGroup({ showCoverageOnHover: false, zoomToBoundsOnClick: true }).addTo(map);
         }
@@ -418,7 +425,11 @@
                 else if(item.michelinType === '1') title = `⭐ ${item.name}`;
                 else if(item.michelinType === 'bib') title = `😋 ${item.name}`;
 
-                const popupContent = `<div class="map-popup-card"><div class="map-popup-header">${title} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div><div class="map-popup-body"><div class="map-popup-info">${statusText}</div><div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div><div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div><a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a></div></div>`;
+                // ✨ 地圖 Popup 也加上訂位按鈕
+                let bookingBtn = "";
+                if (item.booking) bookingBtn = `<a href="${item.booking}" target="_blank" class="map-popup-btn" style="background:#ed8936;margin-top:5px;">📅 線上訂位</a>`;
+
+                const popupContent = `<div class="map-popup-card"><div class="map-popup-header">${title} <span style="font-size:0.8em">⭐ ${item.rating || '-'}</span></div><div class="map-popup-body"><div class="map-popup-info">${statusText}</div><div class="map-popup-info"><i class="fas fa-tag"></i> ${item.type}</div><div class="map-popup-info"><i class="fas fa-map-marker-alt"></i> ${item.address}</div>${bookingBtn}<a href="${mapLink}" target="_blank" class="map-popup-btn">📍 導航去</a></div></div>`;
                 marker.bindPopup(popupContent);
                 markersGroup.addLayer(marker); 
                 bounds.push([item.lat, item.lng]);
@@ -445,14 +456,11 @@
         }
 
         function findNearby() {
-            // 切換成附近模式時，取消縣市篩選，但保留米其林
             appState.isShowingNearby = true;
             appState.isShowingFavs = false;
-            appState.currentCity = "全台"; // 重置為全台
+            appState.currentCity = "全台"; 
             appState.currentDistrict = "全部";
-            
-            // 更新 UI
-            renderCityButtons(); // 這會重新渲染縣市按鈕，並選中「全台」
+            renderCityButtons(); 
             
             const gpsBtn = document.getElementById('gpsBtn');
             gpsBtn.classList.add('loading');
@@ -490,7 +498,7 @@
             appState.isOpenOnly = false;
             appState.currentKeyword = "";
             appState.currentType = "全部";
-            appState.currentCity = "全台";  // ✨ 重置回全台
+            appState.currentCity = "全台";
             appState.currentDistrict = "全部";
 
             document.getElementById('searchInput').value = "";
@@ -513,7 +521,6 @@
                 if (appState.currentKeyword) {
                     results = results.filter(item => item.name.toLowerCase().includes(appState.currentKeyword));
                 } else {
-                    // ✨ 核心修正：縣市篩選邏輯
                     if (appState.currentCity !== "全台") {
                         results = results.filter(i => i.city === appState.currentCity);
                         if (appState.currentDistrict !== "全部") {
@@ -551,7 +558,6 @@
         }
 
         function resetToDefaultView() {
-            // 這是給 "附近" 取消用的
             appState.isShowingNearby = false;
             updateUIState();
             applyFiltersAndSort();
@@ -564,15 +570,12 @@
             
             if (appState.isShowingNearby) { 
                 gpsBtn.classList.add('active'); gpsBtn.innerHTML = '<i class="fas fa-times"></i> 清除定位'; 
-                // 附近模式下，可以選擇隱藏地區篩選，或者保留讓使用者知道現在是「全台」範圍
-                // 這裡選擇隱藏，避免混淆
                 document.getElementById('cityButtons').style.display = 'none';
                 document.getElementById('districtSection').style.display = 'none';
             } 
             else { 
                 gpsBtn.classList.remove('active'); gpsBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 附近'; 
                 document.getElementById('cityButtons').style.display = 'flex';
-                // 只有當選了特定縣市才顯示地區
                 document.getElementById('districtSection').style.display = (appState.currentCity !== "全台") ? 'block' : 'none';
             }
         }
@@ -622,7 +625,15 @@
 
                 const michelinBadge = getMichelinBadge(item.michelinType);
 
-                let buttonsHtml = `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
+                // ✨ 按鈕區
+                let buttonsHtml = '';
+                // 1. 訂位按鈕 (優先)
+                if (item.booking) buttonsHtml += `<a href="${item.booking}" target="_blank" class="btn-booking"><i class="fas fa-calendar-check"></i> 線上訂位</a>`;
+                
+                // 2. 導航按鈕
+                buttonsHtml += `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
+                
+                // 3. 社群圖示 (正方形)
                 if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
                 if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`;
                 if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`;
@@ -655,12 +666,10 @@
             container.appendChild(fragment);
         }
 
-        // --- ✨ 縣市按鈕 (含全台) ---
         function renderCityButtons() {
             const cities = [...new Set(appState.allData.map(item => item.city))];
             const container = document.getElementById('cityButtons'); container.innerHTML = '';
             
-            // 1. 加入「全台」按鈕
             const allBtn = document.createElement('button');
             allBtn.className = 'btn city-btn';
             allBtn.innerText = "全台";
@@ -668,22 +677,19 @@
             allBtn.onclick = () => {
                 appState.currentCity = "全台";
                 appState.currentDistrict = "全部";
-                // 隱藏地區選單
                 document.getElementById('districtSection').style.display = 'none';
-                // 更新按鈕樣式
                 document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active'));
                 allBtn.classList.add('active');
                 applyFiltersAndSort();
             };
             container.appendChild(allBtn);
 
-            // 2. 加入各縣市按鈕
             cities.forEach(city => { 
                 const btn = document.createElement('button'); btn.className = 'btn city-btn'; btn.innerText = city; 
                 if (city === appState.currentCity) btn.classList.add('active');
                 btn.onclick = () => { 
                     appState.currentCity = city; 
-                    appState.currentDistrict = "全部"; // 切換縣市時，地區重置
+                    appState.currentDistrict = "全部"; 
                     appState.currentKeyword = ""; 
                     document.getElementById('searchInput').value=""; 
                     filterByCity(btn); 
@@ -691,12 +697,10 @@
                 container.appendChild(btn); 
             });
         }
-
         function filterByCity(btn) {
             document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active')); 
             if(btn) btn.classList.add('active');
             
-            // 顯示地區選單
             document.getElementById('districtSection').style.display = 'block';
             
             const cityData = appState.allData.filter(i => i.city === appState.currentCity);
