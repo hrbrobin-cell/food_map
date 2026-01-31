@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v23.0 極速快取版)</title>
+    <title>全台美食地圖 (v24.0 完美時間修復版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
@@ -161,7 +161,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v23.0 極速快取版 (智慧時間+效能優化)</p>
+        <p class="subtitle">v24.0 完美時間修復版 (極速+智慧解析)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -238,7 +238,6 @@
 
         window.onerror = function(msg, src, l, c, err) { console.error(msg); };
         
-        // ⚠️ 請填入您的 GAS URL，若無請保留下方預設
         const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE';
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
@@ -254,7 +253,6 @@
         
         let map = null;
         let markersGroup = null;
-        // ✨ 新增：時間解析快取
         let parsedHoursCache = {};
 
         const categoryMap = [
@@ -310,8 +308,6 @@
         function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
         function fetchDataSmart(isBackground) {
-            // 嘗試使用 GAS API 抓取資料，若有設定 URL 則優先使用
-            // 超時機制：如果 API 2秒沒反應，就切換回 CSV
             const apiPromise = new Promise((resolve, reject) => {
                 if (scriptUrl && scriptUrl.includes('script.google.com') && !scriptUrl.includes('YOUR_GAS')) {
                     if(!isBackground) log("📡 連線至 GAS...");
@@ -324,7 +320,6 @@
                 }
             });
 
-            // 設定 3 秒超時
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject("Timeout"), 3000));
 
             Promise.race([apiPromise, timeoutPromise])
@@ -368,7 +363,6 @@
 
         function processData(data, refreshUI) {
             try {
-                // 預先清空快取
                 parsedHoursCache = {};
                 
                 appState.allData = data.filter(item => item.name).map(item => {
@@ -390,7 +384,6 @@
                     newItem.michelinType = newItem.michelin ? newItem.michelin.toString().trim().toLowerCase() : "";
                     newItem.booking = newItem.booking || "";
                     
-                    // ✨ 預處理：如果 hours 存在，先快取解析結果 (這是秒開的關鍵)
                     if (newItem.hours) {
                         preParseHours(newItem.hours);
                     }
@@ -406,19 +399,20 @@
             } catch(e) { log("❌ Error: " + e.message); }
         }
 
-        // --- ✨ 時間解析核心 (優化版) ---
-        // 預先解析並存入 Cache
+        // ✨ v24.0: 強化版時間解析
         function preParseHours(hoursStr) {
-            if (parsedHoursCache[hoursStr]) return; // 已存在，跳過
+            if (parsedHoursCache[hoursStr]) return;
 
-            // 1. 清洗文字
+            // 1. 清洗文字 & 符號正規化 (修復全形冒號問題)
             let cleanStr = hoursStr.replace(/晚餐|午餐|最後點餐|last order|休息|公休/gi, "");
-            cleanStr = cleanStr.replace(/～|to/g, "-");
+            cleanStr = cleanStr.replace(/：/g, ":").replace(/～|to/g, "-").replace(/\./g, ":"); // 支援 . 
             
+            // 2. 全形數字轉半形
+            cleanStr = cleanStr.replace(/[０-９]/g, function(s) {
+                return String.fromCharCode(s.charCodeAt(0) - 65248);
+            });
+
             const timeSegments = [];
-            
-            // 2. 如果包含今日公休關鍵字 (這裡只做簡單判斷，複雜的留給 checkIsOpen 動態判斷)
-            // 其實 checkIsOpen 裡面有 dayOfWeek 判斷，這裡主要存 "數字區間"
             
             // 3. 抓取時間段
             const timeMatches = cleanStr.match(/(\d{1,2}:\d{2})\s*(AM|PM)?/gi);
@@ -432,21 +426,17 @@
                     let start = parseTime(startStr); 
                     let end = parseTime(endStr);
                     
-                    // 跨日處理
                     if (end < start) end += 1440; 
                     
                     timeSegments.push([start, end]);
                 }
             }
-            
             parsedHoursCache[hoursStr] = timeSegments;
         }
 
-        // 優化後的 checkIsOpen：直接讀取快取 + 純數字比對
         function checkIsOpen(hoursStr) {
             if (!hoursStr || typeof hoursStr !== 'string') return false;
             
-            // 1. 先判斷星期幾公休 (這是動態的，不能完全依賴靜態快取)
             const now = new Date(); 
             const dayOfWeek = now.getDay(); 
             const dayMap = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
@@ -454,23 +444,19 @@
             
             if (hoursStr.toUpperCase().includes('24H') || hoursStr.includes('24小時')) return true;
 
-            // 2. 讀取快取的數字區間
             const segments = parsedHoursCache[hoursStr];
             if (!segments || segments.length === 0) return false;
 
-            // 3. 純數字比對 (極速)
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
             
             for (let i = 0; i < segments.length; i++) {
                 const [start, end] = segments[i];
                 let checkTime = currentMinutes;
                 
-                // 處理凌晨 (例如現在是 01:00 (60分)，但店家開到 02:00 (1560分))
                 if (checkTime < start && end >= 1440) checkTime += 1440;
 
                 if (checkTime >= start && checkTime <= end) return true;
             }
-            
             return false;
         }
 
@@ -478,7 +464,7 @@
             if(!t) return 0;
             let isPM = /PM|pm|下午|晚/.test(t);
             let isAM = /AM|am|上午|早/.test(t);
-            let clean = t.replace(/[^0-9:]/g, '');
+            let clean = t.replace(/[^0-9:]/g, ''); // 只留數字和冒號
             let parts = clean.split(':');
             if (parts.length < 2) return 0;
             let h = parseInt(parts[0]);
@@ -488,7 +474,6 @@
             return h * 60 + m; 
         }
 
-        /* 渲染與篩選 */
         function applyFiltersAndSort() {
             let results = [...appState.allData];
             
@@ -508,7 +493,6 @@
                 if (appState.currentType !== "全部") results = results.filter(i => i.type === appState.currentType);
             }
             
-            // 使用優化後的 checkIsOpen
             if (appState.isOpenOnly) {
                 results = results.filter(item => {
                     try { return checkIsOpen(item.hours) === true; } catch (e) { return false; }
@@ -536,87 +520,12 @@
             else renderMap(results);
         }
 
-        function loadMore() {
-            const container = document.getElementById('foodContainer');
-            const total = appState.filteredData.length;
-            const start = appState.displayedCount;
-            const end = Math.min(start + BATCH_SIZE, total);
-            
-            if (start >= total) {
-                if (total === 0) container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;">沒有符合條件的店家</p>';
-                document.getElementById('loadMoreBtn').style.display = 'none';
-                return;
-            }
-
-            const fragment = document.createDocumentFragment();
-            for (let i = start; i < end; i++) {
-                fragment.appendChild(createCard(appState.filteredData[i]));
-            }
-            container.appendChild(fragment);
-            appState.displayedCount = end;
-            
-            const loadMoreBtn = document.getElementById('loadMoreBtn');
-            if (appState.displayedCount < total) {
-                loadMoreBtn.style.display = 'inline-block';
-                loadMoreBtn.innerText = `👇 載入更多 (${appState.displayedCount} / ${total})`;
-            } else {
-                loadMoreBtn.style.display = 'none';
-            }
-        }
-
-        function createCard(item) {
-            const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`;
-            const displayPhone = formatPhoneNumber(item.phone);
-            const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : "";
-            
-            let isOpen = checkIsOpen(item.hours);
-            let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : '');
-            let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : '';
-            let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : '';
-            const isFav = appState.myFavorites.includes(item.id);
-            const card = document.createElement('div'); card.className = 'food-card';
-            let imageContent = '';
-            if (item.image) {
-                imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`;
-            } else {
-                const cat = getCategoryStyle(item.type);
-                imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`;
-            }
-            const michelinBadge = getMichelinBadge(item.michelinType);
-            let buttonsHtml = '';
-            if (item.booking) buttonsHtml += `<a href="${item.booking}" target="_blank" class="btn-booking"><i class="fas fa-calendar-check"></i> 線上訂位</a>`;
-            buttonsHtml += `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`;
-            if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
-            if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`;
-            if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`;
-            if (item.youtube) buttonsHtml += `<a href="${item.youtube}" target="_blank" class="btn-icon bg-yt"><i class="fab fa-youtube"></i></a>`;
-
-            card.innerHTML = `
-                <div class="card-image-box">
-                    ${michelinBadge}
-                    ${imageContent}
-                    <div class="card-actions">
-                        <button class="action-btn share-btn" onclick="shareStore('${item.name}', '${item.address}', '${item.rating}', '${mapLink}')"><i class="fas fa-share-alt"></i></button>
-                        <button class="action-btn btn-love ${isFav?'is-fav':''}" onclick="toggleHeart('${item.id}', this)"><i class="fas fa-heart"></i></button>
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="card-top-row">
-                        <div class="meta-group"><span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span><span class="meta-tag" onclick="filterByType('${item.type}')">${item.type}</span></div>
-                        ${statusBadge}
-                    </div>
-                    <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3>
-                    <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div>
-                    <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div>
-                    <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
-                    ${item.note ? `<p class="note">${item.note}</p>` : ''}
-                    <div class="btn-group">${buttonsHtml}</div>
-                </div>
-            `;
-            return card;
-        }
-
-        // --- 輔助函式區 ---
+        // --- 其餘函式保持不變，直接引用 ---
+        // (loadMore, createCard, renderCityButtons, filterByCity, renderTypeButtons, filterByType, toggleFavFilter, toggleHeart, calculateDistance, formatDistance, formatPhoneNumber, resetAllFilters, resetToDefaultView, shareStore, showToast, toggleOpenFilter, toggleViewMode, updateUIState, initMap, renderMap, findNearby, useFakeGPS, calculateDistances, getMichelinBadge, getCategoryStyle)
+        // 為了節省篇幅，這部分與 v23.0 相同，請直接使用上面的完整代碼即可。
+        
+        function loadMore() { const container = document.getElementById('foodContainer'); const total = appState.filteredData.length; const start = appState.displayedCount; const end = Math.min(start + BATCH_SIZE, total); if (start >= total) { if (total === 0) container.innerHTML = '<p style="text-align:center;width:100%;color:#888;padding:40px;grid-column:1/-1;">沒有符合條件的店家</p>'; document.getElementById('loadMoreBtn').style.display = 'none'; return; } const fragment = document.createDocumentFragment(); for (let i = start; i < end; i++) { fragment.appendChild(createCard(appState.filteredData[i])); } container.appendChild(fragment); appState.displayedCount = end; const loadMoreBtn = document.getElementById('loadMoreBtn'); if (appState.displayedCount < total) { loadMoreBtn.style.display = 'inline-block'; loadMoreBtn.innerText = `👇 載入更多 (${appState.displayedCount} / ${total})`; } else { loadMoreBtn.style.display = 'none'; } }
+        function createCard(item) { const mapLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.address||item.name)}`; const displayPhone = formatPhoneNumber(item.phone); const rawPhone = item.phone ? item.phone.replace(/\D/g, '') : ""; let isOpen = checkIsOpen(item.hours); let statusBadge = isOpen === true ? '<span class="status-badge status-open">🟢 營業中</span>' : (isOpen === false ? '<span class="status-badge status-closed">⚪ 休息中</span>' : ''); let ratingHtml = item.rating > 0 ? `<span class="rating-badge"><i class="fas fa-star"></i> ${item.rating.toFixed(1)}</span>` : ''; let distHtml = (appState.isShowingNearby && item.distance < 9000) ? `<span class="dist-badge"><i class="fas fa-route"></i> ${formatDistance(item.distance)}</span>` : ''; const isFav = appState.myFavorites.includes(item.id); const card = document.createElement('div'); card.className = 'food-card'; let imageContent = ''; if (item.image) { imageContent = `<img src="${item.image}" alt="${item.name}" loading="lazy">`; } else { const cat = getCategoryStyle(item.type); imageContent = `<div class="card-placeholder" style="background:${cat.color}"><i class="fas ${cat.icon}"></i><span>${cat.text}</span></div>`; } const michelinBadge = getMichelinBadge(item.michelinType); let buttonsHtml = ''; if (item.booking) buttonsHtml += `<a href="${item.booking}" target="_blank" class="btn-booking"><i class="fas fa-calendar-check"></i> 線上訂位</a>`; buttonsHtml += `<a href="${mapLink}" target="_blank" class="btn-nav"><i class="fas fa-map-marker-alt" style="margin-right:5px;"></i> 導航</a>`; if (item.website) buttonsHtml += `<a href="${item.website}" target="_blank" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`; if (item.fb) buttonsHtml += `<a href="${item.fb}" target="_blank" class="btn-icon bg-fb"><i class="fab fa-facebook-f"></i></a>`; if (item.ig) buttonsHtml += `<a href="${item.ig}" target="_blank" class="btn-icon bg-ig"><i class="fab fa-instagram"></i></a>`; if (item.youtube) buttonsHtml += `<a href="${item.youtube}" target="_blank" class="btn-icon bg-yt"><i class="fab fa-youtube"></i></a>`; card.innerHTML = ` <div class="card-image-box"> ${michelinBadge} ${imageContent} <div class="card-actions"> <button class="action-btn share-btn" onclick="shareStore('${item.name}', '${item.address}', '${item.rating}', '${mapLink}')"><i class="fas fa-share-alt"></i></button> <button class="action-btn btn-love ${isFav?'is-fav':''}" onclick="toggleHeart('${item.id}', this)"><i class="fas fa-heart"></i></button> </div> </div> <div class="card-content"> <div class="card-top-row"> <div class="meta-group"><span class="meta-tag" onclick="filterByType('${item.type}')">${item.city} ${item.district}</span><span class="meta-tag" onclick="filterByType('${item.type}')">${item.type}</span></div> ${statusBadge} </div> <h3 class="card-title"><span>${item.name}</span>${ratingHtml}${distHtml}</h3> <div class="info-row"><i class="far fa-clock info-icon"></i><span class="hours-text">${item.hours}</span></div> <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><a href="tel:${rawPhone}" style="color:#333;text-decoration:none">${displayPhone}</a></div> <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div> ${item.note ? `<p class="note">${item.note}</p>` : ''} <div class="btn-group">${buttonsHtml}</div> </div> `; return card; }
         function getMichelinBadge(type) { if (!type) return ""; if (type === '3') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林三星</div>`; if (type === '2') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i><i class="fas fa-star"></i> 米其林二星</div>`; if (type === '1') return `<div class="michelin-badge bg-star"><i class="fas fa-star"></i> 米其林一星</div>`; if (type === 'bib') return `<div class="michelin-badge bg-bib"><i class="fas fa-smile-beam"></i> 必比登推薦</div>`; if (type === 'selected') return `<div class="michelin-badge bg-selected"><i class="fas fa-utensils"></i> 入選餐廳</div>`; return ""; }
         function getCategoryStyle(typeStr) { const t = (typeStr || "").toLowerCase(); let match = categoryMap.find(cat => cat.keywords.some(k => t.includes(k))); if (!match) return { color: '#a0aec0', icon: 'fa-utensils', text: '精選美食' }; return match; }
         function renderCityButtons() { const cities = [...new Set(appState.allData.map(item => item.city))]; const container = document.getElementById('cityButtons'); container.innerHTML = ''; const allBtn = document.createElement('button'); allBtn.className = 'btn city-btn'; allBtn.innerText = "全台"; if (appState.currentCity === "全台") allBtn.classList.add('active'); allBtn.onclick = () => { appState.currentCity = "全台"; appState.currentDistrict = "全部"; document.getElementById('districtSection').style.display = 'none'; document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active')); allBtn.classList.add('active'); applyFiltersAndSort(); }; container.appendChild(allBtn); cities.forEach(city => { const btn = document.createElement('button'); btn.className = 'btn city-btn'; btn.innerText = city; if (city === appState.currentCity) btn.classList.add('active'); btn.onclick = () => { appState.currentCity = city; appState.currentDistrict = "全部"; appState.currentKeyword = ""; document.getElementById('searchInput').value=""; filterByCity(btn); }; container.appendChild(btn); }); }
