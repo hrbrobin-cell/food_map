@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v27.0 修正版)</title>
+    <title>全台美食地圖 (v27.0 UI修復版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -81,7 +81,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v27.0 (穩定修正版)</p>
+        <p class="subtitle">v27.0 (UI 修正版)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -133,8 +133,7 @@
     <button id="backToTop" onclick="scrollToTop()"><i class="fas fa-arrow-up"></i></button>
 
     <script>
-        // ⚠️ 請填入您的 GAS 部署網址
-        const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE';
+        const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE'; // ⚠️ 請確認 GAS 網址
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
         const proxyList = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest='];
@@ -222,12 +221,10 @@
             if(refreshUI) { renderCityButtons(); renderTypeButtons(); applyFiltersAndSort(); }
         }
 
-        // --- 前端解析器：處理 v11.0 傳來的 "12:00-14:30 (週六,週日); ..." ---
         function parseStandardSchedule(str) {
             let schedule = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
             const map = {'日':0, '一':1, '二':2, '三':3, '四':4, '五':5, '六':6};
             const allDays = [0,1,2,3,4,5,6];
-            
             let parts = str.split(';');
             let closedDays = [];
             
@@ -239,16 +236,14 @@
 
             parts.forEach(p => {
                 if (p.includes("公休")) return; 
-                // 這裡要支援多時段 "12:00-14:00, 18:00-21:00"
-                // 先把日期部分分離
-                let dayPart = p.match(/\((.*?)\)/);
-                let timeStr = p;
-                let specificDays = [];
+                let times = p.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g);
+                if (!times) return;
 
+                let specificDays = [];
+                let dayPart = p.match(/\((.*?)\)/);
                 if (dayPart) {
-                    timeStr = p.replace(dayPart[0], ""); // 移除日期括號
                     let dStr = dayPart[1];
-                    dStr.replace(/週([日一二三四五六])\s*[-]\s*週([日一二三四五六])/g, (m, d1, d2) => {
+                    dStr.replace(/週([日一二三四五六])\s*-\s*週([日一二三四五六])/g, (m, d1, d2) => {
                         let s = map[d1], e = map[d2];
                         if (e < s) e += 7;
                         for(let i=s; i<=e; i++) specificDays.push(i%7);
@@ -259,20 +254,16 @@
                     specificDays = allDays;
                 }
 
-                // 抓取所有時間 (含逗號分隔)
-                let times = timeStr.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/g);
-                if (times) {
-                    specificDays.forEach(d => {
-                        if (!closedDays.includes(d)) {
-                            times.forEach(t => {
-                                let [s, e] = t.split('-');
-                                let start = parseTime(s), end = parseTime(e);
-                                if (end < start) end += 1440;
-                                schedule[d].push([start, end]);
-                            });
-                        }
-                    });
-                }
+                specificDays.forEach(d => {
+                    if (!closedDays.includes(d)) {
+                        times.forEach(t => {
+                            let [s, e] = t.split('-');
+                            let start = parseTime(s), end = parseTime(e);
+                            if (end < start) end += 1440;
+                            schedule[d].push([start, end]);
+                        });
+                    }
+                });
             });
             return schedule;
         }
@@ -287,10 +278,8 @@
             const now = new Date();
             const d = now.getDay();
             const m = now.getHours() * 60 + now.getMinutes();
-            
             const ranges = parsedSchedule[d];
             if (!ranges || ranges.length === 0) return false;
-
             for (let i = 0; i < ranges.length; i++) {
                 const [s, e] = ranges[i];
                 let check = m;
@@ -393,7 +382,6 @@
             return div;
         }
 
-        // 輔助函式
         function getMichelinBadge(t) { if(!t)return""; const map={'3':'⭐⭐⭐','2':'⭐⭐','1':'⭐','bib':'😋 必比登','selected':'🍽️ 入選'}; return `<div class="michelin-badge">${map[t]||''}</div>`; }
         function resetAllFilters() { 
             appState = { ...appState, isShowingFavs:false, isShowingNearby:false, isOpenOnly:false, currentKeyword:"", currentType:"全部", currentCity:"全台", currentDistrict:"全部" };
@@ -401,18 +389,58 @@
             document.getElementById('michelinSelect').value = "all";
             document.getElementById('openFilter').checked = false;
             document.getElementById('rangeSelect').value = "99999";
+            
             updateUIState(); renderTypeButtons(); renderCityButtons(); applyFiltersAndSort();
             showToast("🔄 已重置");
         }
+        
+        // ✨ [關鍵修正]：renderCityButtons 確保 renderDistrictButtons 被調用
         function renderCityButtons() { 
             const cities = ["全台", ...new Set(appState.allData.map(i=>i.city))];
             const div = document.getElementById('cityButtons'); div.innerHTML = "";
             cities.forEach(c => {
                 const b = document.createElement('button'); b.className = `city-btn ${c===appState.currentCity?'active':''}`; b.innerText = c;
-                b.onclick = () => { appState.currentCity = c; appState.currentDistrict = "全部"; document.getElementById('districtSection').style.display = c==="全台"?'none':'block'; renderCityButtons(); applyFiltersAndSort(); };
+                b.onclick = () => { 
+                    appState.currentCity = c; 
+                    appState.currentDistrict = "全部"; 
+                    renderDistrictButtons(); // ✨ 修正：確保切換縣市時生成地區按鈕
+                    renderCityButtons(); 
+                    applyFiltersAndSort(); 
+                };
                 div.appendChild(b);
             });
+            renderDistrictButtons(); // 初始化時也要執行一次
         }
+
+        // ✨ [關鍵修正]：新增地區按鈕渲染函式
+        function renderDistrictButtons() {
+            const districtSection = document.getElementById('districtSection');
+            const districtDiv = document.getElementById('districtButtons');
+            
+            if (appState.currentCity === "全台") {
+                districtSection.style.display = 'none';
+                return;
+            }
+            
+            districtSection.style.display = 'block';
+            districtDiv.innerHTML = "";
+            
+            const cityData = appState.allData.filter(i => i.city === appState.currentCity);
+            const districts = ["全部", ...new Set(cityData.map(i => i.district))];
+            
+            districts.forEach(d => {
+                const b = document.createElement('button'); 
+                b.className = `district-btn ${d===appState.currentDistrict?'active':''}`; 
+                b.innerText = d;
+                b.onclick = () => { 
+                    appState.currentDistrict = d; 
+                    renderDistrictButtons(); 
+                    applyFiltersAndSort(); 
+                };
+                districtDiv.appendChild(b);
+            });
+        }
+
         function renderTypeButtons() { const types = ["全部", ...new Set(appState.allData.map(i => i.type).filter(t => t))]; const container = document.getElementById('typeButtons'); container.innerHTML = ''; types.forEach(type => { const btn = document.createElement('button'); btn.className = `type-btn ${type===appState.currentType?'active':''}`; btn.innerText = type; btn.onclick = () => { appState.currentType = type; renderTypeButtons(); applyFiltersAndSort(); }; container.appendChild(btn); }); }
         function toggleFavFilter() { appState.isShowingFavs = !appState.isShowingFavs; appState.isShowingNearby = false; updateUIState(); applyFiltersAndSort(); }
         function toggleHeart(id, btn) { const idx = appState.myFavorites.indexOf(id); if(idx===-1) { appState.myFavorites.push(id); btn.classList.add('is-fav'); } else { appState.myFavorites.splice(idx,1); btn.classList.remove('is-fav'); if(appState.isShowingFavs) applyFiltersAndSort(); } localStorage.setItem('myFoodFavorites', JSON.stringify(appState.myFavorites)); }
@@ -420,7 +448,7 @@
         function calcDist(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2-lat1)*Math.PI/180; const dLon = (lon2-lon1)*Math.PI/180; const a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2); return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
         function toggleViewMode() { appState.viewMode = appState.viewMode==='list'?'map':'list'; document.getElementById('viewBtn').innerHTML = appState.viewMode==='list'?'<i class="fas fa-map-marked-alt"></i> 地圖':'<i class="fas fa-list"></i> 列表'; document.getElementById('foodContainer').style.display = appState.viewMode==='list'?'grid':'none'; document.getElementById('mapContainer').style.display = appState.viewMode==='map'?'block':'none'; document.getElementById('loadMoreBtn').style.display = appState.viewMode==='list'?'inline-block':'none'; if(appState.viewMode==='map') setTimeout(() => { if(!map) initMap(); map.invalidateSize(); applyFiltersAndSort(); }, 100); }
-        function updateUIState() { const gpsBtn = document.getElementById('gpsBtn'); const favBtn = document.getElementById('favFilterBtn'); if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; } if (appState.isShowingNearby) { gpsBtn.classList.add('active'); document.getElementById('cityButtons').style.display = 'none'; } else { gpsBtn.classList.remove('active'); document.getElementById('cityButtons').style.display = 'flex'; } renderCityButtons(); }
+        function updateUIState() { const gpsBtn = document.getElementById('gpsBtn'); const favBtn = document.getElementById('favFilterBtn'); if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; } if (appState.isShowingNearby) { gpsBtn.classList.add('active'); document.getElementById('cityButtons').style.display = 'none'; document.getElementById('districtSection').style.display = 'none'; } else { gpsBtn.classList.remove('active'); document.getElementById('cityButtons').style.display = 'flex'; document.getElementById('districtSection').style.display = (appState.currentCity !== "全台") ? 'block' : 'none'; } renderCityButtons(); }
         function initMap() { if (map) return; map = L.map('mapContainer').setView([23.9738, 120.9820], 7); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map); markersGroup = L.markerClusterGroup().addTo(map); }
         function renderMap(data) { if (!map) initMap(); markersGroup.clearLayers(); const valid = data.filter(d => d.lat && d.lng); if (valid.length === 0) return; const bounds = []; valid.forEach(i => { const m = L.marker([i.lat, i.lng]); m.bindPopup(createCard(i).outerHTML); markersGroup.addLayer(m); bounds.push([i.lat, i.lng]); }); if (bounds.length) map.fitBounds(bounds); }
         function shareStore(name) { if(navigator.share) navigator.share({title:name, text:name, url:window.location.href}); else showToast("已複製連結"); }
