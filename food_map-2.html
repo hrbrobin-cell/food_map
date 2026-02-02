@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v29.0 旗艦介面版)</title>
+    <title>全台美食地圖 (v30.0 完美介面版)</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
@@ -19,7 +18,6 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
 
     <style>
-        /* --- 全域設定 --- */
         :root {
             --primary: #38b2ac;
             --primary-dark: #319795;
@@ -30,78 +28,40 @@
             --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
         }
 
-        body { 
-            font-family: 'Noto Sans TC', sans-serif; 
-            background: var(--bg-gray); 
-            margin: 0; 
-            padding: 0; /* 移除 padding，由 header 控制 */
-            color: var(--text-main); 
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg-gray); margin: 0; padding: 0; color: var(--text-main); -webkit-tap-highlight-color: transparent; }
 
-        /* --- 頂部吸頂區 (Sticky Header) --- */
         header { 
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(10px);
-            padding: 15px 15px 5px 15px;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
+            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px);
+            padding: 15px 15px 5px 15px; position: sticky; top: 0; z-index: 1000;
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            transition: 0.3s;
         }
 
-        h1 { 
-            color: #2c3e50; 
-            margin: 0 0 5px 0; 
-            font-size: 1.8em; 
-            font-weight: 900; 
-            letter-spacing: 1px;
-            text-align: center;
-        }
-        
-        .subtitle { 
-            color: #718096; 
-            font-size: 0.95em; 
-            margin-bottom: 15px; 
-            text-align: center;
-            font-weight: 500;
-        }
+        h1 { color: #2c3e50; margin: 0 0 5px 0; font-size: 1.8em; font-weight: 900; letter-spacing: 1px; text-align: center; }
+        .subtitle { color: #718096; font-size: 0.95em; margin-bottom: 15px; text-align: center; font-weight: 500; }
 
-        /* --- 控制項容器 --- */
         .controls-wrapper { max-width: 1000px; margin: 0 auto; }
         .controls-row-1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 8px; }
         .controls-row-2 { display: flex; justify-content: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;}
 
-        /* 輸入框與選單優化 */
         .search-box { 
-            flex: 2; padding: 0 16px; height: 42px; 
-            border: 2px solid #e2e8f0; border-radius: 25px; 
-            font-size: 15px; outline: none; transition: 0.2s; 
-            font-family: 'Noto Sans TC';
-            background: #fff;
-            min-width: 160px;
+            flex: 2; padding: 0 16px; height: 42px; border: 2px solid #e2e8f0; 
+            border-radius: 25px; font-size: 15px; outline: none; transition: 0.2s; 
+            font-family: 'Noto Sans TC'; background: #fff; min-width: 160px;
         }
         .search-box:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(56, 178, 172, 0.2); }
 
         .select-pill { 
-            padding: 0 20px; height: 42px; border-radius: 25px; 
-            border: 2px solid #e2e8f0; font-size: 14px; 
-            font-weight: 700; background: white; color: #4a5568; 
-            cursor: pointer; outline: none; appearance: none;
+            padding: 0 30px 0 15px; height: 42px; border-radius: 25px; 
+            border: 2px solid #e2e8f0; font-size: 14px; font-weight: 700; 
+            background: white; color: #4a5568; cursor: pointer; outline: none; appearance: none;
             background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%234a5568%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px top 50%;
-            background-size: 10px auto;
-            padding-right: 30px;
+            background-repeat: no-repeat; background-position: right 12px top 50%; background-size: 10px auto;
         }
         .select-michelin { border-color: #fc8181; color: var(--michelin-red); background-color: #fff5f5; }
 
-        /* 開關按鈕 */
         .toggle-wrapper { 
-            display: flex; align-items: center; background: white; 
-            border: 2px solid #e2e8f0; padding: 4px 12px 4px 4px; 
-            border-radius: 25px; height: 42px; cursor: pointer; user-select: none; 
+            display: flex; align-items: center; background: white; border: 2px solid #e2e8f0; 
+            padding: 4px 12px 4px 4px; border-radius: 25px; height: 42px; cursor: pointer; user-select: none; 
         }
         .toggle-switch { position: relative; width: 36px; height: 22px; margin-right: 8px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
@@ -112,39 +72,31 @@
         .toggle-label { font-size: 14px; font-weight: bold; color: #4a5568; white-space: nowrap; }
         input:checked ~ .toggle-label { color: var(--primary); }
 
-        /* 按鈕群 */
         .btn-pill { 
-            padding: 0 18px; height: 42px; border-radius: 25px; 
-            font-weight: 700; display: inline-flex; align-items: center; 
-            justify-content: center; gap: 6px; border: none; 
-            font-size: 14px; cursor: pointer; background: white; 
+            padding: 0 18px; height: 42px; border-radius: 25px; font-weight: 700; 
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px; 
+            border: none; font-size: 14px; cursor: pointer; background: white; 
             box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.2s; 
             white-space: nowrap; font-family: 'Noto Sans TC';
         }
         .btn-fav { color: #e53e3e; border: 1px solid #fed7d7; background: #fff5f5; } 
         .btn-fav:hover, .btn-fav.active { background: #e53e3e; color: white; border-color: #e53e3e; }
-        
         .btn-gps { color: var(--primary); border: 1px solid #b2f5ea; background: #e6fffa; } 
         .btn-gps:hover, .btn-gps.active { background: var(--primary); color: white; border-color: var(--primary); }
-        
         .btn-view { background: #2d3748; color: white; border: 1px solid #2d3748; }
         .btn-reset { color: #718096; background: #edf2f7; }
         .btn-reset:hover { background: #cbd5e0; }
 
-        /* --- 展開/收合篩選區按鈕 --- */
         .toggle-filter-btn {
             width: 100%; text-align: center; color: #4a5568; font-size: 13px; font-weight: bold;
             cursor: pointer; padding: 5px 0; margin-top: 5px;
         }
         .toggle-filter-btn:hover { color: var(--primary); }
 
-        /* --- 篩選區塊 (預設收合) --- */
         .filter-section { 
-            max-width: 1000px; margin: 0 auto 20px auto; 
-            background: white; padding: 20px; border-radius: 0 0 16px 16px; 
-            box-shadow: var(--shadow); 
-            display: none; /* 預設隱藏 */
-            animation: slideDown 0.3s ease-out;
+            max-width: 1000px; margin: 0 auto 20px auto; background: white; 
+            padding: 20px; border-radius: 0 0 16px 16px; box-shadow: var(--shadow); 
+            display: none; animation: slideDown 0.3s ease-out;
         }
         @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -153,9 +105,9 @@
         .label i { color: var(--primary); }
 
         .city-btn, .district-btn, .type-btn { 
-            padding: 6px 14px; border-radius: 20px; border: none; 
-            cursor: pointer; font-size: 14px; background: #edf2f7; 
-            color: #4a5568; transition: 0.2s; font-family: 'Noto Sans TC';
+            padding: 6px 14px; border-radius: 20px; border: none; cursor: pointer; 
+            font-size: 14px; background: #edf2f7; color: #4a5568; transition: 0.2s; 
+            font-family: 'Noto Sans TC';
         }
         .city-btn:hover, .district-btn:hover, .type-btn:hover { background: #e2e8f0; transform: translateY(-1px); }
         .city-btn.active { background: #2d3748; color: white; }
@@ -163,52 +115,43 @@
         .type-btn { background: white; border: 1px solid #e2e8f0; } 
         .type-btn.active { background: #4a5568; color: white; border-color: #4a5568; }
 
-        /* --- 列表區 --- */
         .main-content { padding: 15px; }
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
         
         .food-card { 
-            background: white; border-radius: 16px; 
-            box-shadow: var(--shadow); overflow: hidden; 
-            position: relative; transition: transform 0.2s; border: 1px solid #edf2f7;
+            background: white; border-radius: 16px; box-shadow: var(--shadow); 
+            overflow: hidden; position: relative; transition: transform 0.2s; 
+            border: 1px solid #edf2f7; display: flex; flex-direction: column;
         }
         .food-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         
-        .card-image-box { height: 180px; background: #f0f0f0; position: relative; }
-        .card-image-box img { width: 100%; height: 100%; object-fit: cover; }
+        .card-image-box { height: 180px; background: #f0f0f0; position: relative; flex-shrink: 0; }
+        .card-image-box img { width: 100%; height: 100%; object-fit: cover; animation: fadeIn 0.5s; }
         
         .michelin-badge { 
-            position: absolute; top: 12px; left: 12px; 
-            background: var(--michelin-red); color: white; 
-            padding: 4px 10px; border-radius: 20px; 
-            font-weight: 700; font-size: 12px; z-index: 5; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
+            position: absolute; top: 12px; left: 12px; background: var(--michelin-red); 
+            color: white; padding: 4px 10px; border-radius: 20px; font-weight: 700; 
+            font-size: 12px; z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); 
             display: flex; align-items: center; gap: 4px;
         }
 
         .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
         .action-btn { 
-            width: 36px; height: 36px; border-radius: 50%; 
-            background: rgba(255,255,255,0.95); color: #718096; 
-            border: 1px solid rgba(0,0,0,0.05); cursor: pointer; 
-            font-size: 1.1em; transition: 0.2s; display:flex; 
-            align-items:center; justify-content:center; 
+            width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.95); 
+            color: #718096; border: 1px solid rgba(0,0,0,0.05); cursor: pointer; 
+            font-size: 1.1em; transition: 0.2s; display:flex; align-items:center; justify-content:center; 
         }
         .action-btn:hover { transform: scale(1.1); color: var(--text-main); }
         .action-btn.is-fav { color: #ff4757; }
 
-        .card-content { padding: 18px; }
+        .card-content { padding: 18px; display: flex; flex-direction: column; flex-grow: 1; }
         .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
         
-        .card-title { 
-            font-size: 1.35em; font-weight: 900; margin: 5px 0 12px 0; 
-            color: #1a202c; line-height: 1.3; 
-        }
+        .card-title { font-size: 1.35em; font-weight: 900; margin: 5px 0 12px 0; color: #1a202c; line-height: 1.3; }
         .rating-badge { 
-            font-size: 13px; color: #b7791f; background: #fffbe6; 
-            border: 1px solid #f6e05e; padding: 2px 8px; border-radius: 12px; 
-            font-weight: bold; display: inline-flex; align-items: center; gap: 3px; 
-            vertical-align: middle; margin-left: 8px;
+            font-size: 13px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; 
+            padding: 2px 8px; border-radius: 12px; font-weight: bold; display: inline-flex; 
+            align-items: center; gap: 3px; vertical-align: middle; margin-left: 8px;
         }
         
         .status-badge { font-size: 12px; padding: 3px 8px; border-radius: 12px; font-weight: 800; white-space: nowrap; }
@@ -217,32 +160,37 @@
 
         .info-row { display: flex; align-items: flex-start; margin-bottom: 6px; color: #4a5568; line-height: 1.5; font-size: 0.9em; }
         .info-icon { margin-right: 8px; color: var(--primary); margin-top: 3px; width: 16px; text-align: center; }
+        
+        /* 連結樣式優化：電話連結 */
+        .info-link { color: #2d3748; text-decoration: none; border-bottom: 1px dashed #cbd5e0; transition: 0.2s; }
+        .info-link:hover { color: var(--primary); border-bottom-color: var(--primary); }
 
-        .btn-group { display: flex; gap: 8px; margin-top: 15px; border-top: 1px solid #edf2f7; padding-top: 12px; }
+        .meta-group { display: flex; gap: 6px; margin-bottom: 8px; }
+        .meta-tag { font-size: 12px; background: #edf2f7; color: #4a5568; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+
+        /* ✨ 按鈕群組對齊修正 */
+        .btn-group { display: flex; gap: 8px; margin-top: auto; border-top: 1px solid #edf2f7; padding-top: 12px; }
         .btn-nav, .btn-booking { 
-            flex-grow: 1; height: 38px; border-radius: 8px; 
-            display: flex; justify-content: center; align-items: center; 
-            text-decoration: none; font-weight: 700; font-size: 0.95em; transition: 0.2s; 
+            flex: 1; /* 確保按鈕平分寬度 */
+            height: 38px; border-radius: 8px; display: flex; justify-content: center; 
+            align-items: center; text-decoration: none; font-weight: 700; font-size: 0.95em; 
+            transition: 0.2s; 
         }
         .btn-nav { background: var(--primary); color: white; }
         .btn-nav:hover { background: var(--primary-dark); }
         .btn-booking { background: var(--accent); color: white; }
         .btn-booking:hover { background: #dd6b20; }
         
+        /* ✨ 網站圖示改色 (不再是灰色) */
         .btn-icon { 
-            width: 38px; height: 38px; border-radius: 8px; 
-            display: flex; justify-content: center; align-items: center; 
-            color: #718096; font-size: 1.2em; border: 1px solid #e2e8f0; 
-            transition: 0.2s; 
+            width: 38px; height: 38px; border-radius: 8px; display: flex; 
+            justify-content: center; align-items: center; font-size: 1.2em; 
+            border: 1px solid #e2e8f0; transition: 0.2s; flex-shrink: 0;
         }
-        .bg-web:hover { border-color: var(--accent); color: var(--accent); }
+        .bg-web { color: var(--accent); border-color: var(--accent); background: white; } 
+        .bg-web:hover { background: var(--accent); color: white; }
 
-        #loadMoreBtn { 
-            display: none; width: 200px; padding: 12px; margin: 30px auto; 
-            background: white; border: 2px solid var(--primary); 
-            color: var(--primary); font-weight: bold; border-radius: 25px; 
-            cursor: pointer; transition: 0.2s; 
-        }
+        #loadMoreBtn { display: none; width: 200px; padding: 12px; margin: 30px auto; background: white; border: 2px solid var(--primary); color: var(--primary); font-weight: bold; border-radius: 25px; cursor: pointer; transition: 0.2s; }
         #loadMoreBtn:hover { background: var(--primary); color: white; }
 
         #mapContainer { display: none; width: 100%; height: 80vh; border-radius: 12px; margin-top: 20px; z-index: 1; border: 1px solid #e2e8f0; }
@@ -251,6 +199,12 @@
         #toast.show { visibility: visible; opacity: 1; transition: opacity 0.3s; }
         
         #backToTop { position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; background: #2c3e50; color: white; border-radius: 50%; border: none; font-size: 1.2em; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.9; transition: 0.2s; }
+        #backToTop:hover { transform: translateY(-3px); background: #38b2ac; }
+        
+        .empty-state { text-align: center; padding: 40px 20px; color: #718096; grid-column: 1 / -1; }
+        .empty-state i { font-size: 3em; margin-bottom: 15px; color: #cbd5e0; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -259,7 +213,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v29.0 旗艦介面版</p>
+        <p class="subtitle">v30.0 完美介面版</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -327,7 +281,7 @@
     <button id="backToTop" onclick="scrollToTop()"><i class="fas fa-arrow-up"></i></button>
 
     <script>
-        // ⚠️ 請確認 Apps Script 部署網址
+        // ⚠️ 請確認 Apps Script 部署網址 (需配合 v11 版 GAS)
         const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE';
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
@@ -367,7 +321,6 @@
             });
         }
 
-        // ✨ 展開/收合篩選區
         function toggleFilterSection() {
             const fs = document.getElementById('filterSection');
             const btn = document.querySelector('.toggle-filter-btn');
@@ -542,8 +495,13 @@
             const start = appState.displayedCount;
             const end = Math.min(start + BATCH_SIZE, total);
             
-            if (start >= total) {
-                if (total === 0) container.innerHTML = '<p style="text-align:center;padding:40px;color:#666;">沒有符合條件的店家</p>';
+            // ✨ 空狀態提示：如果是口袋名單且為空
+            if (total === 0) {
+                if (appState.isShowingFavs) {
+                    container.innerHTML = `<div class="empty-state"><i class="far fa-heart"></i><p>您還沒有收藏任何餐廳<br>快去點擊愛心加入口袋名單吧！</p></div>`;
+                } else {
+                    container.innerHTML = '<p style="text-align:center;padding:40px;color:#666;width:100%;">沒有符合條件的店家</p>';
+                }
                 document.getElementById('loadMoreBtn').style.display = 'none';
                 return;
             }
@@ -561,6 +519,10 @@
             const statusHtml = isOpen ? '<span class="status-badge status-open">🟢 營業中</span>' : '<span class="status-badge status-closed">⚪ 休息中</span>';
             const michelin = getMichelinBadge(item.michelinType);
             const isFav = appState.myFavorites.includes(item.id) ? 'is-fav' : '';
+            
+            // ✨ 修正：電話撥打連結
+            const phoneLink = item.phone ? `<a href="tel:${item.phone.replace(/\D/g,'')}" class="info-link">${item.phone}</a>` : "無";
+            
             let btns = '';
             if (item.booking) btns += `<a href="${item.booking}" target="_blank" class="btn-booking"><i class="fas fa-calendar-check"></i> 線上訂位</a>`;
             btns += `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}" target="_blank" class="btn-nav"><i class="fas fa-location-arrow"></i> 導航</a>`;
@@ -584,7 +546,7 @@
                     </div>
                     <h3 class="card-title">${item.name} <span class="rating-badge">⭐ ${item.rating}</span></h3>
                     <div class="info-row"><i class="far fa-clock info-icon"></i><span>${item.hours}</span></div>
-                    <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><span>${item.phone||"無"}</span></div>
+                    <div class="info-row"><i class="fas fa-phone-alt info-icon"></i><span>${phoneLink}</span></div>
                     <div class="info-row"><i class="fas fa-map-marker-alt info-icon"></i><span>${item.address}</span></div>
                     <div class="btn-group">${btns}</div>
                 </div>
@@ -592,7 +554,6 @@
             return div;
         }
 
-        // 正名：修正為全稱
         function getMichelinBadge(t) { 
             if(!t)return""; 
             const map={'3':'米其林三星','2':'米其林二星','1':'米其林一星','bib':'米其林必比登推薦','selected':'米其林入選餐廳'}; 
