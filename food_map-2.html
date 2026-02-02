@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v27.0 UI修復版)</title>
+    <title>全台美食地圖 (v28.0 介面優化版)</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
@@ -18,9 +18,12 @@
         body { font-family: "Microsoft JhengHei", sans-serif; background: #f4f7f6; margin: 0; padding: 15px; color: #222; }
         header { text-align: center; margin-bottom: 20px; }
         h1 { color: #2c3e50; font-size: 2.2em; font-weight: 900; }
+        .subtitle { color: #555; font-size: 1.1em; margin-bottom: 25px; }
+        
         .loading-bar { width: 100%; background: #e2e8f0; height: 4px; position: fixed; top: 0; left: 0; z-index: 9999; display: none; }
         .loading-bar .bar { height: 100%; background: #bd2333; animation: load 1.5s infinite ease-in-out; width: 50%; }
         @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+
         .controls-wrapper { max-width: 950px; margin: 0 auto 20px auto; }
         .controls-row-1 { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 12px; }
         .search-box { flex: 2; padding: 12px 20px; border: 2px solid #ccc; border-radius: 30px; font-size: 16px; outline: none; }
@@ -35,44 +38,68 @@
         input:checked + .slider:before { transform: translateX(16px); }
         .toggle-label { font-size: 15px; font-weight: bold; color: #555; }
         input:checked ~ .toggle-label { color: #38b2ac; }
+        
         .controls-row-2 { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
         .btn-pill { padding: 0 20px; height: 48px; border-radius: 30px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-size: 15px; cursor: pointer; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .btn-fav { border: 2px solid #e53e3e; color: #e53e3e; } .btn-fav.active { background: #e53e3e; color: white; }
         .btn-gps { border: 2px solid #38b2ac; color: #38b2ac; } .btn-gps.active { background: #38b2ac; color: white; }
         .btn-view { background: #2d3748; color: white; }
         .btn-reset { background: #718096; color: white; }
+
+        /* Filter Section Styling */
+        .filter-section { max-width: 1000px; margin: 0 auto 20px auto; text-align: center; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 15px; }
+        
+        /* 移除數字，改用圖示與底線 */
+        .label { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 12px; font-weight: 800; color: #2d3748; font-size: 1.1em; border-bottom: 2px solid #edf2f7; padding-bottom: 5px; width: fit-content; margin-left: auto; margin-right: auto; }
+        .label i { color: #38b2ac; }
+
+        .city-btn, .district-btn, .type-btn { padding: 8px 16px; border-radius: 20px; border: none; cursor: pointer; font-size: 14px; background: #e2e8f0; color: #4a5568; transition: 0.2s; }
+        .city-btn:hover, .district-btn:hover, .type-btn:hover { background: #cbd5e0; transform: translateY(-2px); }
+        .city-btn.active { background: #2d3748; color: white; box-shadow: 0 4px 10px rgba(45, 55, 72, 0.3); }
+        .district-btn.active { background: #38b2ac; color: white; box-shadow: 0 4px 10px rgba(56, 178, 172, 0.3); }
+        .type-btn { background: white; border: 1px solid #ccc; } 
+        .type-btn.active { background: #4a5568; color: white; border-color: #4a5568; }
+
         .food-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 30px; max-width: 1200px; margin: 0 auto; }
-        .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; position: relative; }
+        .food-card { background: white; border-radius: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); overflow: hidden; position: relative; transition: transform 0.2s; }
+        .food-card:hover { transform: translateY(-5px); }
         .card-image-box { height: 200px; background: #f0f0f0; position: relative; }
         .card-image-box img { width: 100%; height: 100%; object-fit: cover; }
         .card-content { padding: 20px; }
-        .card-title { font-size: 1.6em; font-weight: 800; margin: 5px 0 15px 0; color: #1a202c; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .status-badge { font-size: 14px; padding: 5px 12px; border-radius: 20px; font-weight: 800; margin-left: auto; }
+        .card-title { font-size: 1.5em; font-weight: 800; margin: 5px 0 15px 0; color: #1a202c; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; line-height: 1.4; }
+        .rating-badge { font-size: 14px; color: #b7791f; background: #fffbe6; border: 1px solid #f6e05e; padding: 2px 8px; border-radius: 12px; font-weight: bold; display: inline-flex; align-items: center; gap: 3px; vertical-align: middle; }
+        .dist-badge { font-size: 14px; color: #2d3748; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
+        .status-badge { font-size: 13px; padding: 4px 10px; border-radius: 15px; font-weight: 800; margin-left: auto; letter-spacing: 0.5px; }
         .status-open { background: #c6f6d5; color: #22543d; } .status-closed { background: #edf2f7; color: #718096; }
-        .btn-group { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
-        .btn-nav { flex-grow: 1; height: 44px; background: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; }
-        .btn-booking { flex-grow: 1; height: 44px; background: #ed8936; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; }
-        .btn-icon { width: 44px; height: 44px; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.3em; }
-        .bg-web { color: #ed8936; } .bg-fb { color: #1877F2; } .bg-ig { color: #d6249f; } .bg-yt { color: #FF0000; }
-        .michelin-badge { position: absolute; top: 10px; left: 10px; background: #bd2333; color: white; padding: 5px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; z-index: 5; display: flex; gap: 5px; }
-        .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
-        .action-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.4); color: white; border: none; cursor: pointer; font-size: 1.2em; backdrop-filter: blur(4px); }
-        .action-btn.is-fav { background: white; color: #ff4757; }
-        .info-row { display: flex; align-items: flex-start; margin-bottom: 8px; color: #444; line-height: 1.5; }
-        .info-icon { margin-right: 10px; color: #38b2ac; margin-top: 4px; }
-        #mapContainer { display: none; width: 100%; height: 75vh; border-radius: 16px; margin-top: 20px; }
-        #loadMoreBtn { display: none; width: 100%; padding: 15px; margin: 20px 0; background: white; border: 2px solid #38b2ac; color: #38b2ac; font-weight: bold; border-radius: 12px; cursor: pointer; }
-        #toast { visibility: hidden; min-width: 250px; background: #333; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; bottom: 30px; left: 50%; margin-left: -125px; z-index: 9999; }
-        #toast.show { visibility: visible; opacity: 1; transition: opacity 0.5s; }
-        #backToTop { position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; background: #2c3e50; color: white; border-radius: 50%; border: none; font-size: 1.2em; display: none; align-items: center; justify-content: center; cursor: pointer; }
         
-        .filter-section { text-align: center; margin-bottom: 20px; }
-        .btn-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 15px; }
-        .label { display: block; margin-bottom: 8px; font-weight: bold; color: #666; }
-        .city-btn, .district-btn, .type-btn { padding: 8px 16px; border-radius: 20px; border: none; cursor: pointer; font-size: 14px; background: #e2e8f0; }
-        .city-btn.active { background: #2d3748; color: white; }
-        .district-btn.active { background: #38b2ac; color: white; }
-        .type-btn { background: white; border: 1px solid #ccc; } .type-btn.active { background: #4a5568; color: white; }
+        .info-row { display: flex; align-items: flex-start; margin-bottom: 8px; color: #4a5568; line-height: 1.5; font-size: 0.95em; }
+        .info-icon { margin-right: 10px; color: #38b2ac; margin-top: 4px; width: 16px; text-align: center; }
+        .meta-group { display: flex; gap: 6px; margin-bottom: 8px; }
+        .meta-tag { font-size: 12px; background: #edf2f7; color: #4a5568; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+
+        .btn-group { display: flex; gap: 8px; margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; }
+        .btn-nav { flex-grow: 1; height: 40px; background: #38b2ac; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; transition: 0.2s; }
+        .btn-nav:hover { background: #319795; }
+        .btn-booking { flex-grow: 1; height: 40px; background: #ed8936; color: white; border-radius: 8px; display: flex; justify-content: center; align-items: center; text-decoration: none; font-weight: bold; transition: 0.2s; }
+        .btn-booking:hover { background: #dd6b20; }
+        .btn-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: white; font-size: 1.2em; transition: 0.2s; }
+        .bg-web { color: #ed8936; border: 1px solid #ed8936; background: white; } 
+        .bg-web:hover { background: #ed8936; color: white; }
+        
+        .michelin-badge { position: absolute; top: 10px; left: 10px; background: #bd2333; color: white; padding: 5px 12px; border-radius: 20px; font-weight: bold; font-size: 13px; z-index: 5; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .card-actions { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; z-index: 5; }
+        .action-btn { width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.9); color: #555; border: none; cursor: pointer; font-size: 1.1em; transition: 0.2s; display:flex; align-items:center; justify-content:center; }
+        .action-btn:hover { transform: scale(1.1); background: white; color: #2d3748; }
+        .action-btn.is-fav { color: #ff4757; }
+
+        #mapContainer { display: none; width: 100%; height: 75vh; border-radius: 16px; margin-top: 20px; border: 4px solid white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        #loadMoreBtn { display: none; width: 100%; padding: 15px; margin: 20px 0; background: white; border: 2px solid #38b2ac; color: #38b2ac; font-weight: bold; border-radius: 12px; cursor: pointer; transition: 0.2s; }
+        #loadMoreBtn:hover { background: #38b2ac; color: white; }
+        #toast { visibility: hidden; min-width: 250px; background: #2d3748; color: #fff; text-align: center; border-radius: 30px; padding: 16px; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.3); font-weight: bold; }
+        #toast.show { visibility: visible; opacity: 1; transition: opacity 0.3s; }
+        #backToTop { position: fixed; bottom: 85px; right: 20px; width: 45px; height: 45px; background: #2c3e50; color: white; border-radius: 50%; border: none; font-size: 1.2em; display: none; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0.9; transition: 0.2s; }
+        #backToTop:hover { transform: translateY(-3px); background: #38b2ac; }
     </style>
 </head>
 <body>
@@ -81,11 +108,11 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v27.0 (UI 修正版)</p>
+        <p class="subtitle">v28.0 (介面優化版)</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
-                <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋...">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 搜尋店名、關鍵字...">
                 <select id="michelinSelect" class="select-pill select-michelin" onchange="applyFiltersAndSort()">
                     <option value="all">⭕ 不限等級</option>
                     <option value="any">✨ 所有米其林</option>
@@ -105,7 +132,9 @@
                 <select id="rangeSelect" class="select-pill" onchange="applyFiltersAndSort()">
                     <option value="99999">📏 距離: 全部</option>
                     <option value="1">1 公里內</option>
+                    <option value="3">3 公里內</option>
                     <option value="5" selected>5 公里內</option>
+                    <option value="10">10 公里內</option>
                 </select>
                 <select id="sortSelect" class="select-pill" onchange="applyFiltersAndSort()">
                     <option value="dist" selected>📍 距離近→遠</option>
@@ -121,19 +150,27 @@
     <div id="loadingMsg" class="loading" style="text-align:center;padding:20px;font-weight:bold;color:#38b2ac;"></div>
     
     <div class="filter-section">
-        <span class="label">1. 選擇縣市</span><div id="cityButtons" class="btn-container"></div>
-        <div id="districtSection" style="display:none;"><span class="label">2. 選擇地區</span><div id="districtButtons" class="btn-container"></div></div>
-        <span class="label">3. 美食類別</span><div id="typeButtons" class="btn-container"></div>
+        <span class="label"><i class="fas fa-city"></i> 選擇縣市</span>
+        <div id="cityButtons" class="btn-container"></div>
+        
+        <div id="districtSection" style="display:none;">
+            <span class="label"><i class="fas fa-map-signs"></i> 選擇地區</span>
+            <div id="districtButtons" class="btn-container"></div>
+        </div>
+        
+        <span class="label"><i class="fas fa-utensils"></i> 美食類別</span>
+        <div id="typeButtons" class="btn-container"></div>
     </div>
     
     <div class="food-list" id="foodContainer"></div>
-    <div style="text-align:center;"><button id="loadMoreBtn" onclick="loadMore()">👇 載入更多</button></div>
+    <div style="text-align:center;"><button id="loadMoreBtn" onclick="loadMore()">👇 載入更多餐廳</button></div>
     <div id="mapContainer"></div>
     <div id="toast"></div>
     <button id="backToTop" onclick="scrollToTop()"><i class="fas fa-arrow-up"></i></button>
 
     <script>
-        const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE'; // ⚠️ 請確認 GAS 網址
+        // ⚠️ 請確認 Apps Script 部署網址 (需配合 v11 版 GAS)
+        const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE';
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
         const proxyList = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url=', 'https://api.codetabs.com/v1/proxy?quest='];
@@ -333,7 +370,7 @@
             const end = Math.min(start + BATCH_SIZE, total);
             
             if (start >= total) {
-                if (total === 0) container.innerHTML = '<p style="text-align:center;padding:40px;">沒有符合的店家</p>';
+                if (total === 0) container.innerHTML = '<p style="text-align:center;padding:40px;color:#666;">沒有符合條件的店家</p>';
                 document.getElementById('loadMoreBtn').style.display = 'none';
                 return;
             }
@@ -354,7 +391,7 @@
             let btns = '';
             if (item.booking) btns += `<a href="${item.booking}" target="_blank" class="btn-booking">📅 訂位</a>`;
             btns += `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}" target="_blank" class="btn-nav">📍 導航</a>`;
-            if(item.website) btns += `<a href="${item.website}" class="btn-icon bg-web"><i class="fas fa-globe"></i></a>`;
+            if(item.website) btns += `<a href="${item.website}" class="btn-icon bg-web" target="_blank"><i class="fas fa-globe"></i></a>`;
             
             const div = document.createElement('div');
             div.className = 'food-card';
@@ -389,12 +426,9 @@
             document.getElementById('michelinSelect').value = "all";
             document.getElementById('openFilter').checked = false;
             document.getElementById('rangeSelect').value = "99999";
-            
             updateUIState(); renderTypeButtons(); renderCityButtons(); applyFiltersAndSort();
             showToast("🔄 已重置");
         }
-        
-        // ✨ [關鍵修正]：renderCityButtons 確保 renderDistrictButtons 被調用
         function renderCityButtons() { 
             const cities = ["全台", ...new Set(appState.allData.map(i=>i.city))];
             const div = document.getElementById('cityButtons'); div.innerHTML = "";
@@ -403,44 +437,27 @@
                 b.onclick = () => { 
                     appState.currentCity = c; 
                     appState.currentDistrict = "全部"; 
-                    renderDistrictButtons(); // ✨ 修正：確保切換縣市時生成地區按鈕
-                    renderCityButtons(); 
+                    renderDistrictButtons(); // 更新地區按鈕
+                    renderCityButtons(); // 更新縣市按鈕狀態
                     applyFiltersAndSort(); 
                 };
                 div.appendChild(b);
             });
-            renderDistrictButtons(); // 初始化時也要執行一次
+            renderDistrictButtons();
         }
-
-        // ✨ [關鍵修正]：新增地區按鈕渲染函式
         function renderDistrictButtons() {
             const districtSection = document.getElementById('districtSection');
             const districtDiv = document.getElementById('districtButtons');
-            
-            if (appState.currentCity === "全台") {
-                districtSection.style.display = 'none';
-                return;
-            }
-            
-            districtSection.style.display = 'block';
-            districtDiv.innerHTML = "";
-            
+            if (appState.currentCity === "全台") { districtSection.style.display = 'none'; return; }
+            districtSection.style.display = 'block'; districtDiv.innerHTML = "";
             const cityData = appState.allData.filter(i => i.city === appState.currentCity);
             const districts = ["全部", ...new Set(cityData.map(i => i.district))];
-            
             districts.forEach(d => {
-                const b = document.createElement('button'); 
-                b.className = `district-btn ${d===appState.currentDistrict?'active':''}`; 
-                b.innerText = d;
-                b.onclick = () => { 
-                    appState.currentDistrict = d; 
-                    renderDistrictButtons(); 
-                    applyFiltersAndSort(); 
-                };
+                const b = document.createElement('button'); b.className = `district-btn ${d===appState.currentDistrict?'active':''}`; b.innerText = d;
+                b.onclick = () => { appState.currentDistrict = d; renderDistrictButtons(); applyFiltersAndSort(); };
                 districtDiv.appendChild(b);
             });
         }
-
         function renderTypeButtons() { const types = ["全部", ...new Set(appState.allData.map(i => i.type).filter(t => t))]; const container = document.getElementById('typeButtons'); container.innerHTML = ''; types.forEach(type => { const btn = document.createElement('button'); btn.className = `type-btn ${type===appState.currentType?'active':''}`; btn.innerText = type; btn.onclick = () => { appState.currentType = type; renderTypeButtons(); applyFiltersAndSort(); }; container.appendChild(btn); }); }
         function toggleFavFilter() { appState.isShowingFavs = !appState.isShowingFavs; appState.isShowingNearby = false; updateUIState(); applyFiltersAndSort(); }
         function toggleHeart(id, btn) { const idx = appState.myFavorites.indexOf(id); if(idx===-1) { appState.myFavorites.push(id); btn.classList.add('is-fav'); } else { appState.myFavorites.splice(idx,1); btn.classList.remove('is-fav'); if(appState.isShowingFavs) applyFiltersAndSort(); } localStorage.setItem('myFoodFavorites', JSON.stringify(appState.myFavorites)); }
@@ -448,7 +465,7 @@
         function calcDist(lat1, lon1, lat2, lon2) { const R = 6371; const dLat = (lat2-lat1)*Math.PI/180; const dLon = (lon2-lon1)*Math.PI/180; const a = Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2); return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))); }
         function formatDistance(km) { if (km >= 9999) return ""; if (km < 1) return (km * 1000).toFixed(0) + " m"; return km.toFixed(1) + " km"; }
         function toggleViewMode() { appState.viewMode = appState.viewMode==='list'?'map':'list'; document.getElementById('viewBtn').innerHTML = appState.viewMode==='list'?'<i class="fas fa-map-marked-alt"></i> 地圖':'<i class="fas fa-list"></i> 列表'; document.getElementById('foodContainer').style.display = appState.viewMode==='list'?'grid':'none'; document.getElementById('mapContainer').style.display = appState.viewMode==='map'?'block':'none'; document.getElementById('loadMoreBtn').style.display = appState.viewMode==='list'?'inline-block':'none'; if(appState.viewMode==='map') setTimeout(() => { if(!map) initMap(); map.invalidateSize(); applyFiltersAndSort(); }, 100); }
-        function updateUIState() { const gpsBtn = document.getElementById('gpsBtn'); const favBtn = document.getElementById('favFilterBtn'); if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; } if (appState.isShowingNearby) { gpsBtn.classList.add('active'); document.getElementById('cityButtons').style.display = 'none'; document.getElementById('districtSection').style.display = 'none'; } else { gpsBtn.classList.remove('active'); document.getElementById('cityButtons').style.display = 'flex'; document.getElementById('districtSection').style.display = (appState.currentCity !== "全台") ? 'block' : 'none'; } renderCityButtons(); }
+        function updateUIState() { const gpsBtn = document.getElementById('gpsBtn'); const favBtn = document.getElementById('favFilterBtn'); if (appState.isShowingFavs) { favBtn.classList.add('active'); favBtn.innerText = "🔙 回列表"; } else { favBtn.classList.remove('active'); favBtn.innerText = "❤️ 口袋"; } if (appState.isShowingNearby) { gpsBtn.classList.add('active'); document.getElementById('cityButtons').style.display = 'none'; } else { gpsBtn.classList.remove('active'); document.getElementById('cityButtons').style.display = 'flex'; } renderCityButtons(); }
         function initMap() { if (map) return; map = L.map('mapContainer').setView([23.9738, 120.9820], 7); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map); markersGroup = L.markerClusterGroup().addTo(map); }
         function renderMap(data) { if (!map) initMap(); markersGroup.clearLayers(); const valid = data.filter(d => d.lat && d.lng); if (valid.length === 0) return; const bounds = []; valid.forEach(i => { const m = L.marker([i.lat, i.lng]); m.bindPopup(createCard(i).outerHTML); markersGroup.addLayer(m); bounds.push([i.lat, i.lng]); }); if (bounds.length) map.fitBounds(bounds); }
         function shareStore(name) { if(navigator.share) navigator.share({title:name, text:name, url:window.location.href}); else showToast("已複製連結"); }
