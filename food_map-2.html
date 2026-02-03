@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>全台美食地圖 (v30.0 完美介面版)</title>
+    <title>全台美食地圖 (v31.0 社群功能回歸版)</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
@@ -161,17 +162,21 @@
         .info-row { display: flex; align-items: flex-start; margin-bottom: 6px; color: #4a5568; line-height: 1.5; font-size: 0.9em; }
         .info-icon { margin-right: 8px; color: var(--primary); margin-top: 3px; width: 16px; text-align: center; }
         
-        /* 連結樣式優化：電話連結 */
         .info-link { color: #2d3748; text-decoration: none; border-bottom: 1px dashed #cbd5e0; transition: 0.2s; }
         .info-link:hover { color: var(--primary); border-bottom-color: var(--primary); }
 
         .meta-group { display: flex; gap: 6px; margin-bottom: 8px; }
         .meta-tag { font-size: 12px; background: #edf2f7; color: #4a5568; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
 
-        /* ✨ 按鈕群組對齊修正 */
-        .btn-group { display: flex; gap: 8px; margin-top: auto; border-top: 1px solid #edf2f7; padding-top: 12px; }
+        /* ✨ v31 按鈕對齊與樣式 */
+        .btn-group { 
+            display: flex; gap: 8px; margin-top: auto; 
+            border-top: 1px solid #edf2f7; padding-top: 12px; 
+            flex-wrap: wrap; /* 允許換行以防按鈕過多，但通常會維持一行 */
+        }
         .btn-nav, .btn-booking { 
-            flex: 1; /* 確保按鈕平分寬度 */
+            flex: 1 1 auto; /* 自動填滿 */
+            min-width: 80px; /* 最小寬度防止變形 */
             height: 38px; border-radius: 8px; display: flex; justify-content: center; 
             align-items: center; text-decoration: none; font-weight: 700; font-size: 0.95em; 
             transition: 0.2s; 
@@ -181,14 +186,23 @@
         .btn-booking { background: var(--accent); color: white; }
         .btn-booking:hover { background: #dd6b20; }
         
-        /* ✨ 網站圖示改色 (不再是灰色) */
+        /* ✨ 社群圖示 - 恢復品牌色 */
         .btn-icon { 
             width: 38px; height: 38px; border-radius: 8px; display: flex; 
             justify-content: center; align-items: center; font-size: 1.2em; 
-            border: 1px solid #e2e8f0; transition: 0.2s; flex-shrink: 0;
+            border: 1px solid #e2e8f0; transition: 0.2s; flex-shrink: 0; background: white;
         }
-        .bg-web { color: var(--accent); border-color: var(--accent); background: white; } 
+        .bg-web { color: var(--accent); border-color: var(--accent); } 
         .bg-web:hover { background: var(--accent); color: white; }
+        
+        .bg-fb { color: #1877F2; border-color: #1877F2; }
+        .bg-fb:hover { background: #1877F2; color: white; }
+        
+        .bg-ig { color: #d6249f; border-color: #d6249f; }
+        .bg-ig:hover { background: #d6249f; color: white; }
+        
+        .bg-yt { color: #FF0000; border-color: #FF0000; }
+        .bg-yt:hover { background: #FF0000; color: white; }
 
         #loadMoreBtn { display: none; width: 200px; padding: 12px; margin: 30px auto; background: white; border: 2px solid var(--primary); color: var(--primary); font-weight: bold; border-radius: 25px; cursor: pointer; transition: 0.2s; }
         #loadMoreBtn:hover { background: var(--primary); color: white; }
@@ -213,7 +227,7 @@
 
     <header>
         <h1>🇹🇼 全台美食地圖</h1>
-        <p class="subtitle">v30.0 完美介面版</p>
+        <p class="subtitle">v31.0 社群功能回歸版</p>
         
         <div class="controls-wrapper">
             <div class="controls-row-1">
@@ -281,7 +295,6 @@
     <button id="backToTop" onclick="scrollToTop()"><i class="fas fa-arrow-up"></i></button>
 
     <script>
-        // ⚠️ 請確認 Apps Script 部署網址 (需配合 v11 版 GAS)
         const scriptUrl = 'YOUR_GAS_SCRIPT_URL_HERE';
         const sheetID = '2PACX-1vRJXAD8XnJT4MfBoaSSCpByuNcUVwlXTCL702vtUBDsg8aZ__v-_yxXVRVQntuqaJY3eecAwq7qZDIb';
         const rawUrl = `https://docs.google.com/spreadsheets/d/e/${sheetID}/pub?output=csv&cache_bust=${Date.now()}`;
@@ -495,7 +508,6 @@
             const start = appState.displayedCount;
             const end = Math.min(start + BATCH_SIZE, total);
             
-            // ✨ 空狀態提示：如果是口袋名單且為空
             if (total === 0) {
                 if (appState.isShowingFavs) {
                     container.innerHTML = `<div class="empty-state"><i class="far fa-heart"></i><p>您還沒有收藏任何餐廳<br>快去點擊愛心加入口袋名單吧！</p></div>`;
@@ -520,13 +532,18 @@
             const michelin = getMichelinBadge(item.michelinType);
             const isFav = appState.myFavorites.includes(item.id) ? 'is-fav' : '';
             
-            // ✨ 修正：電話撥打連結
+            // 電話連結
             const phoneLink = item.phone ? `<a href="tel:${item.phone.replace(/\D/g,'')}" class="info-link">${item.phone}</a>` : "無";
             
             let btns = '';
-            if (item.booking) btns += `<a href="${item.booking}" target="_blank" class="btn-booking"><i class="fas fa-calendar-check"></i> 線上訂位</a>`;
-            btns += `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}" target="_blank" class="btn-nav"><i class="fas fa-location-arrow"></i> 導航</a>`;
-            if(item.website) btns += `<a href="${item.website}" class="btn-icon bg-web" target="_blank"><i class="fas fa-globe"></i></a>`;
+            if (item.booking) btns += `<a href="${item.booking}" target="_blank" class="btn-booking" title="線上訂位"><i class="fas fa-calendar-check"></i> 線上訂位</a>`;
+            btns += `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.name)}" target="_blank" class="btn-nav" title="Google 導航"><i class="fas fa-location-arrow"></i> 導航</a>`;
+            
+            // ✨ 恢復社群按鈕 (帶顏色)
+            if (item.website) btns += `<a href="${item.website}" class="btn-icon bg-web" target="_blank" title="官方網站"><i class="fas fa-globe"></i></a>`;
+            if (item.fb) btns += `<a href="${item.fb}" class="btn-icon bg-fb" target="_blank" title="Facebook"><i class="fab fa-facebook-f"></i></a>`;
+            if (item.ig) btns += `<a href="${item.ig}" class="btn-icon bg-ig" target="_blank" title="Instagram"><i class="fab fa-instagram"></i></a>`;
+            if (item.youtube) btns += `<a href="${item.youtube}" class="btn-icon bg-yt" target="_blank" title="YouTube"><i class="fab fa-youtube"></i></a>`;
             
             const div = document.createElement('div');
             div.className = 'food-card';
